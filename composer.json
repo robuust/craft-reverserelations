@@ -1,0 +1,36 @@
+{
+    "version": "1.0.0",
+    "name": "robuust/craft-reverserelations",
+    "description": "Reverse Relations for Craft 3",
+    "type": "craft-plugin",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bob Olde Hampsink",
+            "email": "bob@robuust.digital"
+        }
+    ],
+    "support": {
+        "email": "bob@robuust.digital"
+    },
+    "extra": {
+        "handle": "reverserelations",
+        "name": "Reverse Relations",
+        "developer": "Robuust",
+        "developerUrl": "https://robuust.digital",
+        "documentationUrl": "https://github.com/robuust/craft-reverserelations/blob/master/README.md",
+        "changelogUrl": "https://github.com/robuust/craft-reverserelations/blob/master/CHANGELOG.md",
+        "downloadUrl": "https://github.com/robuust/craft-reverserelations/releases/latest",
+        "hasSettings": false,
+        "hasCpSection": false
+    },
+    "require": {
+        "php": "^7.0",
+        "craftcms/cms": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "robuust\\reverserelations\\": "src/"
+        }
+    }
+}
