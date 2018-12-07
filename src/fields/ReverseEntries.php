@@ -87,25 +87,34 @@ class ReverseEntries extends Entries
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
+        // Get allowed sources
+        $sources = [];
+        foreach ($this->inputSources() as $source) {
+            list($type, $id) = explode(':', $source);
+            $sources[] = (int) $id;
+        }
+
         // Overwrite inner join to switch sourceId and targetId
         $query->join = [];
         if ($value !== '' && $element && $element->id) {
-            $query->innerJoin(
-                '{{%relations}} relations',
-                [
-                    'and',
-                    '[[relations.sourceId]] = [[elements.id]]',
+            $query
+                ->innerJoin(
+                    '{{%relations}} relations',
                     [
-                        'relations.targetId' => $element->id,
-                        'relations.fieldId' => $this->targetField,
-                    ],
-                    [
-                        'or',
-                        ['relations.sourceSiteId' => null],
-                        ['relations.sourceSiteId' => $element->siteId],
-                    ],
-                ]
-            );
+                        'and',
+                        '[[relations.sourceId]] = [[elements.id]]',
+                        [
+                            'relations.targetId' => $element->id,
+                            'relations.fieldId' => $this->targetField,
+                        ],
+                        [
+                            'or',
+                            ['relations.sourceSiteId' => null],
+                            ['relations.sourceSiteId' => $element->siteId],
+                        ],
+                    ]
+                )
+                ->where(['entries.sectionId' => $sources]);
         }
 
         return $query;
@@ -158,17 +167,14 @@ class ReverseEntries extends Entries
      */
     public function getInputHtml($value, ElementInterface $element = null): string
     {
-        // Reverse the criteria
-        $reverse = Entry::find()
-            ->relatedTo([
-                'targetElement' => $element,
-                'field' => $this->targetField,
-            ])
-            ->all();
+        /** @var Element|null $element */
+        if ($element !== null && $element->hasEagerLoadedElements($this->handle)) {
+            $value = $element->getEagerLoadedElements($this->handle);
+        }
 
         // Get variables
         /** @var ElementQuery|array $value */
-        $variables = $this->inputTemplateVariables($reverse, $element);
+        $variables = $this->inputTemplateVariables($value, $element);
 
         // Disable adding if we can't save a reverse relation
         $field = Craft::$app->fields->getFieldById($this->targetField);

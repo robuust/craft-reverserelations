@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "robuust/craft-reverserelations",
     "description": "Reverse Relations for Craft 3",
     "type": "craft-plugin",

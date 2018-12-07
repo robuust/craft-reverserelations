@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="550px" height="550px" viewBox="0 0 550 550" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 52.5 (67469) - http://www.bohemiancoding.com/sketch -->
+    <title>Group</title>
+    <desc>Created with Sketch.</desc>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Bidirectional" transform="translate(-100.000000, -100.000000)" fill="#000000">
+            <g id="Group" transform="translate(100.000000, 100.000000)">
+                <g id="Group-5">
+                    <g id="Group-3-Copy-2">
+                        <path d="M241.257763,-7.57892818e-15 L308.742237,7.57892818e-15 C379.737203,-5.46263551e-15 415.091978,9.28256111 447.68457,26.7132704 C480.277163,44.1439796 505.85602,69.7228371 523.28673,102.31543 C540.717439,134.908022 550,170.262797 550,241.257763 L550,308.742237 C550,379.737203 540.717439,415.091978 523.28673,447.68457 C505.85602,480.277163 480.277163,505.85602 447.68457,523.28673 C415.091978,540.717439 379.737203,550 308.742237,550 L241.257763,550 C170.262797,550 134.908022,540.717439 102.31543,523.28673 C69.7228371,505.85602 44.1439796,480.277163 26.7132704,447.68457 C9.28256111,415.091978 3.64175701e-15,379.737203 -5.05261879e-15,308.742237 L5.05261879e-15,241.257763 C-3.64175701e-15,170.262797 9.28256111,134.908022 26.7132704,102.31543 C44.1439796,69.7228371 69.7228371,44.1439796 102.31543,26.7132704 C134.908022,9.28256111 170.262797,5.46263551e-15 241.257763,-7.57892818e-15 Z" id="Rectangle"></path>
+                    </g>
+                </g>
+                <polygon id="ROBUUST-Copy-67" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="translate(308.000000, 333.500000) rotate(90.000000) translate(-308.000000, -333.500000) " points="272 450 272 217 344 333.5 308 333.5 308 450"></polygon>
+                <polygon id="ROBUUST-Copy-67" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" transform="translate(242.000000, 216.500000) scale(-1, -1) rotate(90.000000) translate(-242.000000, -216.500000) " points="206 333 206 100 278 216.5 242 216.5 242 333"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

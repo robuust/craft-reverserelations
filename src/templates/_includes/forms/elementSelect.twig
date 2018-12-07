@@ -5,7 +5,7 @@
 {% endif %}
 
 {% if readOnly %}
-	{% includejs %}
+	{% js %}
 		$('#{{ id|namespaceInputId }}').find('.add, .delete').remove();
-	{% endincludejs %}
+	{% endjs %}
 {% endif %}
