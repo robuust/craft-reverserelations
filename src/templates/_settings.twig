@@ -3,10 +3,10 @@
 {{ forms.selectField({
     label: "Target Field"|t("reverserelations"),
     instructions: "Set the target field of this relation."|t("reverserelations"),
-    id: 'targetField',
-    name: 'targetField',
+    id: 'targetFieldId',
+    name: 'targetFieldId',
     options: fields,
-    value: settings.targetField
+    value: settings.targetFieldId
 })}}
 
 {{ forms.lightswitchField({

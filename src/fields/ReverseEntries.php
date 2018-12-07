@@ -27,7 +27,7 @@ class ReverseEntries extends Entries
     /**
      * @var int Target field setting
      */
-    public $targetField;
+    public $targetFieldId;
 
     /**
      * @var bool Read-only setting
@@ -105,7 +105,7 @@ class ReverseEntries extends Entries
                         '[[relations.sourceId]] = [[elements.id]]',
                         [
                             'relations.targetId' => $element->id,
-                            'relations.fieldId' => $this->targetField,
+                            'relations.fieldId' => $this->targetFieldId,
                         ],
                         [
                             'or',
@@ -129,7 +129,7 @@ class ReverseEntries extends Entries
     {
         /** @var Element $element */
         /** @var Field $field */
-        $field = Craft::$app->fields->getFieldById($this->targetField);
+        $field = Craft::$app->fields->getFieldById($this->targetFieldId);
 
         // Determine if a field can save a reverse relation
         if (!$this->canSaveReverseRelation($field)) {
@@ -177,7 +177,7 @@ class ReverseEntries extends Entries
         $variables = $this->inputTemplateVariables($value, $element);
 
         // Disable adding if we can't save a reverse relation
-        $field = Craft::$app->fields->getFieldById($this->targetField);
+        $field = Craft::$app->fields->getFieldById($this->targetFieldId);
         $variables['readOnly'] = $this->readOnly || !$this->canSaveReverseRelation($field);
 
         // Return input template (local override if exists)
@@ -193,7 +193,7 @@ class ReverseEntries extends Entries
     public function settingsAttributes(): array
     {
         $attributes = parent::settingsAttributes();
-        $attributes[] = 'targetField';
+        $attributes[] = 'targetFieldId';
         $attributes[] = 'readOnly';
 
         return $attributes;
