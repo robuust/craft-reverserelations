@@ -35,7 +35,7 @@ class ReverseEntries extends Field
     public function saveRecord(Model $record, array $definition): bool
     {
         if (array_key_exists('targetField', $definition['attributes'])) {
-            $record->targetFieldId = Craft::$app->getFields()->getFieldByHandle($definition['attributes']['targetField']);
+            $record->targetFieldId = Craft::$app->getFields()->getFieldByHandle($definition['attributes']['targetField'])->id;
         }
 
         return parent::saveRecord($record, $definition);
