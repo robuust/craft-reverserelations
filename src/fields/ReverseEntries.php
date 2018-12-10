@@ -10,7 +10,6 @@ use craft\fields\Matrix;
 use craft\fields\Entries;
 use craft\base\FieldInterface;
 use craft\base\ElementInterface;
-use craft\events\FieldElementEvent;
 use craft\elements\db\ElementQuery;
 
 /**
@@ -87,16 +86,9 @@ class ReverseEntries extends Entries
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
-        // Get allowed sources
-        $sources = [];
-        foreach ($this->inputSources() as $source) {
-            list($type, $id) = explode(':', $source);
-            $sources[] = (int) $id;
-        }
-
         // Overwrite inner join to switch sourceId and targetId
-        $query->join = [];
-        if ($value !== '' && $element && $element->id) {
+        if (!is_array($value) && $value !== '' && $element && $element->id) {
+            $query->join = [];
             $query
                 ->innerJoin(
                     '{{%relations}} relations',
@@ -114,7 +106,7 @@ class ReverseEntries extends Entries
                         ],
                     ]
                 )
-                ->where(['entries.sectionId' => $sources]);
+                ->where(['entries.sectionId' => $this->inputSourceIds()]);
         }
 
         return $query;
@@ -137,29 +129,22 @@ class ReverseEntries extends Entries
         }
 
         // Get targets
-        $targetIds = $element->getFieldValue($this->handle);
+        $value = $element->getFieldValue($this->handle);
 
-        // Loop through targets
-        /** @var ElementInterface $target */
-        foreach ($targetIds->all() as $target) {
+        // Loop through sources
+        /** @var ElementInterface $source */
+        foreach ($value->all() as $source) {
+            $target = $source->getFieldValue($field->handle);
+
             // Set this element on that entry
-            $target->setFieldValue(
-                $field->handle,
-                array_merge($target->getFieldValue($field->handle)->ids(), [$element->id])
+            Craft::$app->getRelations()->saveRelations(
+                $field,
+                $source,
+                array_merge($target->ids(), [$element->id])
             );
-
-            // Save target
-            Craft::$app->elements->saveElement($target);
         }
 
-        // This code is from the grandparent method
-        // Trigger an 'afterElementSave' event
-        if ($this->hasEventHandlers(self::EVENT_AFTER_ELEMENT_SAVE)) {
-            $this->trigger(self::EVENT_AFTER_ELEMENT_SAVE, new FieldElementEvent([
-                'element' => $element,
-                'isNew' => $isNew,
-            ]));
-        }
+        Field::afterElementSave($element, $isNew);
     }
 
     /**
@@ -197,6 +182,22 @@ class ReverseEntries extends Entries
         $attributes[] = 'readOnly';
 
         return $attributes;
+    }
+
+    /**
+     * Get allowed input source ids.
+     *
+     * @return array
+     */
+    private function inputSourceIds(): array
+    {
+        $sources = [];
+        foreach ($this->inputSources() as $source) {
+            list($type, $id) = explode(':', $source);
+            $sources[] = (int) $id;
+        }
+
+        return $sources;
     }
 
     /**
