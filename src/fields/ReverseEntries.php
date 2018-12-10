@@ -5,6 +5,7 @@ namespace robuust\reverserelations\fields;
 use Craft;
 use craft\base\Field;
 use craft\base\Element;
+use craft\db\Query;
 use craft\elements\Entry;
 use craft\fields\Matrix;
 use craft\fields\Entries;
@@ -42,6 +43,11 @@ class ReverseEntries extends Entries
      * {@inheritdoc}
      */
     protected $sortable = false;
+
+    /**
+     * @var array
+     */
+    private $oldSources = [];
 
     /**
      * {@inheritdoc}
@@ -113,6 +119,25 @@ class ReverseEntries extends Entries
     }
 
     /**
+     * Get original relations so we can diff those
+     * with the new value and find out which ones need to be deleted.
+     *
+     * {@inheritdoc}
+     */
+    public function beforeElementSave(ElementInterface $element, bool $isNew): bool
+    {
+        if (!$isNew) {
+            // Get cached element
+            $entry = Craft::$app->getEntries()->getEntryById($element->id);
+
+            // Get old sources
+            $this->oldSources = $entry->{$this->handle}->all();
+        }
+
+        return parent::beforeElementSave($element, $isNew);
+    }
+
+    /**
      * Save relations on the other side.
      *
      * {@inheritdoc}
@@ -128,20 +153,28 @@ class ReverseEntries extends Entries
             return;
         }
 
-        // Get targets
-        $value = $element->getFieldValue($this->handle);
+        // Get sources
+        $sources = $element->getFieldValue($this->handle)->all();
+
+        // Find out which ones to delete
+        $delete = array_diff($this->oldSources, $sources);
 
         // Loop through sources
         /** @var ElementInterface $source */
-        foreach ($value->all() as $source) {
+        foreach ($sources as $source) {
             $target = $source->getFieldValue($field->handle);
 
             // Set this element on that entry
-            Craft::$app->getRelations()->saveRelations(
+            $this->saveRelations(
                 $field,
                 $source,
                 array_merge($target->ids(), [$element->id])
             );
+        }
+
+        // Loop through deleted sources
+        foreach ($delete as $source) {
+            $this->deleteRelations($field, $source, [$element->id]);
         }
 
         Field::afterElementSave($element, $isNew);
@@ -214,5 +247,68 @@ class ReverseEntries extends Entries
         }
 
         return true;
+    }
+
+    /**
+     * Saves some relations for a field.
+     *
+     * @param Entries $field
+     * @param Entry   $source
+     * @param array   $targetIds
+     */
+    private function saveRelations(Entries $field, Entry $source, array $targetIds)
+    {
+        if ($field->localizeRelations) {
+            $sourceSiteId = $source->siteId;
+        } else {
+            $sourceSiteId = null;
+        }
+
+        foreach ($targetIds as $sortOrder => $targetId) {
+            $criteria = [
+                'fieldId' => $field->id,
+                'sourceId' => $source->id,
+                'sourceSiteId' => $sourceSiteId,
+                'targetId' => $targetId,
+            ];
+
+            if (!(new Query())->select('id')->from('{{%relations}}')->where($criteria)->exists()) {
+                Craft::$app->getDb()->createCommand()
+                    ->insert('{{%relations}}', array_merge($criteria, ['sortOrder' => 1]))
+                    ->execute();
+            }
+        }
+    }
+
+    /**
+     * Deletes some relations for a field.
+     *
+     * @param Entries $field
+     * @param Entry   $source
+     * @param array   $targetIds
+     */
+    private function deleteRelations(Entries $field, Entry $source, array $targetIds)
+    {
+        // Delete the existing relations
+        $oldRelationConditions = [
+            'and',
+            [
+                'fieldId' => $field->id,
+                'sourceId' => $source->id,
+                'targetId' => $targetIds,
+            ],
+        ];
+
+        if ($field->localizeRelations) {
+            $oldRelationConditions[] = [
+                'or',
+                ['sourceSiteId' => null],
+                ['sourceSiteId' => $source->siteId],
+            ];
+        }
+
+        Craft::$app->getDb()->createCommand()
+            ->delete('{{%relations}}', $oldRelationConditions)
+            ->execute();
     }
 }

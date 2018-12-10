@@ -1,6 +1,7 @@
 ## 1.0.4 - 2018-12-10
 ### Fixed
 - Fixed saving new reverse relations
+- Fixed deleting reverse relations
 - Fixed bug when importing with Schematic when the target field didn't yet exist
 - Fixed bug where targets where validated
 
