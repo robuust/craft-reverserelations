@@ -5,7 +5,7 @@ Plugin that allows you to show and save reverse relations in both the CP and the
 
 ## Requirements
 
-This plugin requires Craft CMS 3.0.0-beta.28 or later.
+This plugin requires Craft CMS 3.1.0 or later.
 
 ## Installation
 

@@ -1,3 +1,10 @@
+## 1.1.0 - 2019-02-11
+### Added
+- Added Craft 3.1 compatibility
+
+### Removed
+- Removed Schematic compatibility (not compatible with Craft 3.1)
+
 ## 1.0.4 - 2018-12-10
 ### Fixed
 - Fixed saving new reverse relations

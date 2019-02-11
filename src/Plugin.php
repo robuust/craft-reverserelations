@@ -11,7 +11,7 @@ use robuust\reverserelations\fields\ReverseEntries;
  * Reverse Relations Plugin.
  *
  * @author    Bob Olde Hampsink <bob@robuust.digital>
- * @copyright Copyright (c) 2018, Robuust
+ * @copyright Copyright (c) 2019, Robuust
  * @license   MIT
  *
  * @see       https://robuust.digital
@@ -28,19 +28,5 @@ class Plugin extends \craft\base\Plugin
         Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function (RegisterComponentTypesEvent $event) {
             $event->types[] = ReverseEntries::class;
         });
-
-        if (class_exists('\NerdsAndCompany\Schematic\Schematic')) {
-			Event::on(
-				\NerdsAndCompany\Schematic\Schematic::class,
-				\NerdsAndCompany\Schematic\Schematic::EVENT_RESOLVE_CONVERTER,
-				function(\NerdsAndCompany\Schematic\Events\ConverterEvent $event) {
-					$modelClass = $event->modelClass;
-					if (strpos($modelClass, __NAMESPACE__) !== false) {
-						$converterClass = __NAMESPACE__.'\\converters\\'.str_replace(__NAMESPACE__.'\\', '', $modelClass);
-						$event->converterClass = $converterClass;
-					}
-				}
-			);
-		}
     }
 }

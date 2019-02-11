@@ -5,8 +5,10 @@ namespace robuust\reverserelations\fields;
 use Craft;
 use craft\base\Field;
 use craft\base\Element;
+use craft\db\Table;
 use craft\db\Query;
 use craft\elements\Entry;
+use craft\helpers\Db;
 use craft\fields\Matrix;
 use craft\fields\Entries;
 use craft\base\FieldInterface;
@@ -17,7 +19,7 @@ use craft\elements\db\ElementQuery;
  * Reverse Relations Entries Field.
  *
  * @author    Bob Olde Hampsink <bob@robuust.digital>
- * @copyright Copyright (c) 2018, Robuust
+ * @copyright Copyright (c) 2019, Robuust
  * @license   MIT
  *
  * @see       https://robuust.digital
@@ -27,7 +29,7 @@ class ReverseEntries extends Entries
     /**
      * @var int Target field setting
      */
-    public $targetFieldId;
+    public $targetFieldUid;
 
     /**
      * @var bool Read-only setting
@@ -94,6 +96,8 @@ class ReverseEntries extends Entries
 
         // Overwrite inner join to switch sourceId and targetId
         if (!is_array($value) && $value !== '' && $element && $element->id) {
+            $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldUid);
+
             $query->join = [];
             $query
                 ->innerJoin(
@@ -103,7 +107,7 @@ class ReverseEntries extends Entries
                         '[[relations.sourceId]] = [[elements.id]]',
                         [
                             'relations.targetId' => $element->id,
-                            'relations.fieldId' => $this->targetFieldId,
+                            'relations.fieldId' => $targetField->id,
                         ],
                         [
                             'or',
@@ -146,7 +150,7 @@ class ReverseEntries extends Entries
     {
         /** @var Element $element */
         /** @var Field $field */
-        $field = Craft::$app->fields->getFieldById($this->targetFieldId);
+        $field = Craft::$app->fields->getFieldByUid($this->targetFieldUid);
 
         // Determine if a field can save a reverse relation
         if (!$this->canSaveReverseRelation($field)) {
@@ -195,7 +199,7 @@ class ReverseEntries extends Entries
         $variables = $this->inputTemplateVariables($value, $element);
 
         // Disable adding if we can't save a reverse relation
-        $field = Craft::$app->fields->getFieldById($this->targetFieldId);
+        $field = Craft::$app->fields->getFieldByUid($this->targetFieldUid);
         $variables['readOnly'] = $this->readOnly || !$this->canSaveReverseRelation($field);
 
         // Return input template (local override if exists)
@@ -211,7 +215,7 @@ class ReverseEntries extends Entries
     public function settingsAttributes(): array
     {
         $attributes = parent::settingsAttributes();
-        $attributes[] = 'targetFieldId';
+        $attributes[] = 'targetFieldUid';
         $attributes[] = 'readOnly';
 
         return $attributes;
@@ -226,11 +230,11 @@ class ReverseEntries extends Entries
     {
         $sources = [];
         foreach ($this->inputSources() as $source) {
-            list($type, $id) = explode(':', $source);
-            $sources[] = (int) $id;
+            list($type, $uid) = explode(':', $source);
+            $sources[] = $uid;
         }
 
-        return $sources;
+        return Db::idsByUids(Table::SECTIONS, $sources);
     }
 
     /**
