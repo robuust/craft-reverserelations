@@ -18,7 +18,11 @@ class m190218_182935_target_field_id_to_uid extends Migration
      */
     public function safeUp()
     {
-        if (Craft::$app->projectConfig->get('plugins.reverserelations.schemaVersion', true) === null) {
+        // Don't make the same config changes twice
+        $schemaVersion = Craft::$app->projectConfig
+            ->get('plugins.reverserelations.schemaVersion', true);
+
+        if (version_compare($schemaVersion, '1.0.1', '<')) {
             $field = (new Query())
                 ->select(['id', 'settings', 'type'])
                 ->from([Table::FIELDS])
