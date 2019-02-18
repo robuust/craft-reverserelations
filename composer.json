@@ -18,6 +18,7 @@
         "email": "bob@robuust.digital"
     },
     "extra": {
+        "schemaVersion": "1.0.1",
         "handle": "reverserelations",
         "name": "Reverse Relations",
         "developer": "Robuust",
