@@ -2,11 +2,11 @@
 
 namespace robuust\reverserelations\migrations;
 
-use Craft;
 use craft\db\Migration;
 use craft\db\Query;
 use craft\db\Table;
 use craft\helpers\Json;
+use robuust\reverserelations\fields\ReverseEntries;
 
 /**
  * m190218_182935_target_field_id_to_uid migration.
@@ -18,17 +18,17 @@ class m190218_182935_target_field_id_to_uid extends Migration
      */
     public function safeUp()
     {
-        // Don't make the same config changes twice
-        $schemaVersion = Craft::$app->projectConfig
-            ->get('plugins.reverserelations.schemaVersion', true);
+        $fields = (new Query())
+                    ->select(['id', 'settings'])
+                    ->from([Table::FIELDS])
+                    ->where(['type' => ReverseEntries::class])
+                    ->all();
 
-        if (version_compare($schemaVersion, '1.0.1', '<')) {
-            $field = (new Query())
-                ->select(['id', 'settings', 'type'])
-                ->from([Table::FIELDS])
-                ->where(['handle' => 'reverserelations'])
-                ->all();
+        $siteIds = [];
+        $sectionIds = [];
+        $targetIds = [];
 
+        foreach ($fields as $field) {
             if ($field['settings']) {
                 $settings = Json::decodeIfJson($field['settings']) ?: [];
             } else {
@@ -48,27 +48,29 @@ class m190218_182935_target_field_id_to_uid extends Migration
             }
 
             if (!empty($settings['targetFieldId'])) {
-                $fieldIds[] = $settings['targetFieldId'];
+                $targetIds[] = $settings['targetFieldId'];
             }
+        }
 
-            $sites = (new Query())
-                ->select(['id', 'uid'])
-                ->from([Table::SITES])
-                ->where(['id' => $siteIds])
-                ->pairs();
+        $sites = (new Query())
+                    ->select(['id', 'uid'])
+                    ->from([Table::SITES])
+                    ->where(['id' => $siteIds])
+                    ->pairs();
 
-            $sections = (new Query())
-                ->select(['id', 'uid'])
-                ->from([Table::SECTIONS])
-                ->where(['id' => $sectionIds])
-                ->pairs();
+        $sections = (new Query())
+                    ->select(['id', 'uid'])
+                    ->from([Table::SECTIONS])
+                    ->where(['id' => $sectionIds])
+                    ->pairs();
 
-            $fields = (new Query())
-                ->select(['id', 'uid'])
-                ->from([Table::FIELDS])
-                ->where(['id' => $fieldIds])
-                ->pairs();
+        $targets = (new Query())
+                    ->select(['id', 'uid'])
+                    ->from([Table::FIELDS])
+                    ->where(['id' => $targetIds])
+                    ->pairs();
 
+        foreach ($fields as $field) {
             if ($field['settings']) {
                 $settings = Json::decodeIfJson($field['settings']) ?: [];
             } else {
@@ -95,7 +97,7 @@ class m190218_182935_target_field_id_to_uid extends Migration
             }
 
             if (array_key_exists('targetFieldId', $settings)) {
-                $settings['targetFieldId'] = $sites[$settings['targetFieldId']] ?? null;
+                $settings['targetFieldId'] = $targets[$settings['targetFieldId']] ?? null;
             }
 
             $settings = Json::encode($settings);
