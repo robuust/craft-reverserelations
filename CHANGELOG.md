@@ -1,4 +1,4 @@
-## 1.1.0 - 2019-02-11
+## 1.1.0 - 2019-03-15
 ### Added
 - Added Craft 3.1 compatibility
 
