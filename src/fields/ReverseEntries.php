@@ -71,12 +71,13 @@ class ReverseEntries extends Entries
         $fields = [];
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields() as $field) {
-            $fields[$field->id] = $field->name;
+            $fields[$field->uid] = $field->name;
         }
 
         // Add "field" select template
         $fieldSelectTemplate = Craft::$app->view->renderTemplate(
-            'reverserelations/_settings', [
+            'reverserelations/_settings',
+            [
                 'fields' => $fields,
                 'settings' => $this->getSettings(),
             ]
