@@ -2,10 +2,12 @@
 
 namespace robuust\reverserelations\migrations;
 
+use Craft;
 use craft\db\Migration;
 use craft\db\Query;
 use craft\db\Table;
 use craft\helpers\Json;
+use craft\services\Fields;
 use robuust\reverserelations\fields\ReverseEntries;
 
 /**
@@ -19,7 +21,7 @@ class m190218_182935_target_field_id_to_uid extends Migration
     public function safeUp()
     {
         $fields = (new Query())
-                    ->select(['id', 'settings'])
+                    ->select(['id', 'uid', 'settings'])
                     ->from([Table::FIELDS])
                     ->where(['type' => ReverseEntries::class])
                     ->all();
@@ -70,6 +72,9 @@ class m190218_182935_target_field_id_to_uid extends Migration
                     ->where(['id' => $targetIds])
                     ->pairs();
 
+        $projectConfig = Craft::$app->getProjectConfig();
+        $projectConfig->muteEvents = true;
+
         foreach ($fields as $field) {
             if ($field['settings']) {
                 $settings = Json::decodeIfJson($field['settings']) ?: [];
@@ -100,10 +105,12 @@ class m190218_182935_target_field_id_to_uid extends Migration
                 $settings['targetFieldId'] = $targets[$settings['targetFieldId']] ?? null;
             }
 
-            $settings = Json::encode($settings);
+            $projectConfig->set(Fields::CONFIG_FIELDS_KEY.'.'.$field['uid'].'.settings', $settings);
 
-            $this->update(Table::FIELDS, ['settings' => $settings], ['id' => $field['id']], [], false);
+            $this->update(Table::FIELDS, ['settings' => Json::encode($settings)], ['id' => $field['id']], [], false);
         }
+
+        $projectConfig->muteEvents = false;
 
         return true;
     }
