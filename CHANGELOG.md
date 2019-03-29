@@ -1,3 +1,7 @@
+## 1.1.1 - 2019-03-29
+### Changed
+- You can now only select Entries fields as target field.
+
 ## 1.1.0 - 2019-03-15
 ### Added
 - Added Craft 3.1 compatibility

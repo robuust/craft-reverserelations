@@ -71,7 +71,9 @@ class ReverseEntries extends Entries
         $fields = [];
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields() as $field) {
-            $fields[$field->uid] = $field->name;
+            if ($field instanceof Entries) {
+                $fields[$field->uid] = $field->name;
+            }
         }
 
         // Add "field" select template
