@@ -104,7 +104,7 @@ class ReverseEntries extends Entries
             $query->join = [];
             $query
                 ->innerJoin(
-                    '{{%relations}} relations',
+                    Table::RELATIONS,
                     [
                         'and',
                         '[[relations.sourceId]] = [[elements.id]]',
@@ -210,6 +210,56 @@ class ReverseEntries extends Entries
         $template = Craft::$app->view->doesTemplateExist($template) ? $template : $this->inputTemplate;
 
         return Craft::$app->view->renderTemplate($template, $variables);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getEagerLoadingMap(array $sourceElements)
+    {
+        $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
+
+        /** @var Element|null $firstElement */
+        $firstElement = $sourceElements[0] ?? null;
+
+        // Get the source element IDs
+        $sourceElementIds = [];
+
+        foreach ($sourceElements as $sourceElement) {
+            $sourceElementIds[] = $sourceElement->id;
+        }
+
+        // Return any relation data on these elements, defined with this field
+        $map = (new Query())
+            ->select(['sourceId as target', 'targetId as source'])
+            ->from([Table::RELATIONS])
+            ->innerJoin(Table::ENTRIES, '[[relations.sourceId]] = [[entries.id]]')
+            ->where([
+                'and',
+                [
+                    'fieldId' => $targetField->id,
+                    'targetId' => $sourceElementIds,
+                ],
+                [
+                    'or',
+                    ['sourceSiteId' => $firstElement ? $firstElement->siteId : null],
+                    ['sourceSiteId' => null],
+                ],
+            ])
+            ->where(['entries.sectionId' => $this->inputSourceIds()])
+            ->orderBy(['sortOrder' => SORT_ASC])
+            ->all();
+
+        // Figure out which target site to use
+        $targetSite = $this->targetSiteId($firstElement);
+
+        return [
+            'elementType' => static::elementType(),
+            'map' => $map,
+            'criteria' => [
+                'siteId' => $targetSite,
+            ],
+        ];
     }
 
     /**

@@ -1,3 +1,7 @@
+## 1.1.2 - 2019-05-19
+### Fixed
+- Fixed eager loading map
+
 ## 1.1.1 - 2019-03-29
 ### Changed
 - You can now only select Entries fields as target field.
