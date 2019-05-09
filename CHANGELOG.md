@@ -1,4 +1,11 @@
-## 1.1.2 - 2019-05-19
+## 1.1.3 - 2019-05-09
+### Changed
+- You can now select Entries fields in all contexts as target field
+
+### Fixed
+- Prevented selection of another reverse entries field as target field
+
+## 1.1.2 - 2019-05-09
 ### Fixed
 - Fixed eager loading map
 
