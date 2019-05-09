@@ -1,3 +1,7 @@
+## 1.1.4 - 2019-05-09
+### Fixed
+- Fixed a PHP error that could occur of "all sources" was checked
+
 ## 1.1.3 - 2019-05-09
 ### Changed
 - You can now select Entries fields in all contexts as target field

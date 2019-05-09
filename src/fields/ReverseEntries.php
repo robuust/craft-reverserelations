@@ -102,24 +102,24 @@ class ReverseEntries extends Entries
             $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
             $query->join = [];
-            $query
-                ->innerJoin(
-                    Table::RELATIONS,
-                    [
-                        'and',
-                        '[[relations.sourceId]] = [[elements.id]]',
-                        [
-                            'relations.targetId' => $element->id,
-                            'relations.fieldId' => $targetField->id,
-                        ],
-                        [
-                            'or',
-                            ['relations.sourceSiteId' => null],
-                            ['relations.sourceSiteId' => $element->siteId],
-                        ],
-                    ]
-                )
-                ->where(['entries.sectionId' => $this->inputSourceIds()]);
+            $query->innerJoin(Table::RELATIONS, [
+                'and',
+                '[[relations.sourceId]] = [[elements.id]]',
+                [
+                    'relations.targetId' => $element->id,
+                    'relations.fieldId' => $targetField->id,
+                ],
+                [
+                    'or',
+                    ['relations.sourceSiteId' => null],
+                    ['relations.sourceSiteId' => $element->siteId],
+                ],
+            ]);
+
+            $inputSourceIds = $this->inputSourceIds();
+            if ($inputSourceIds != '*') {
+                $query->where(['entries.sectionId' => $inputSourceIds]);
+            }
         }
 
         return $query;
@@ -281,8 +281,14 @@ class ReverseEntries extends Entries
      */
     private function inputSourceIds(): array
     {
+        $inputSources = $this->inputSources();
+
+        if ($inputSources == '*') {
+            return $inputSources;
+        }
+
         $sources = [];
-        foreach ($this->inputSources() as $source) {
+        foreach ($inputSources as $source) {
             list($type, $uid) = explode(':', $source);
             $sources[] = $uid;
         }
