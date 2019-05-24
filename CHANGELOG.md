@@ -1,3 +1,7 @@
+## 1.1.5 - 2019-05-24
+### Fixed
+- Fixed issue where SQL errors could occur if the Craft installation's tables were prefixed
+
 ## 1.1.4 - 2019-05-09
 ### Fixed
 - Fixed a PHP error that could occur of "all sources" was checked

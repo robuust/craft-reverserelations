@@ -102,7 +102,7 @@ class ReverseEntries extends Entries
             $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
             $query->join = [];
-            $query->innerJoin(Table::RELATIONS, [
+            $query->innerJoin('{{%relations}} relations', [
                 'and',
                 '[[relations.sourceId]] = [[elements.id]]',
                 [
@@ -232,8 +232,8 @@ class ReverseEntries extends Entries
         // Return any relation data on these elements, defined with this field
         $map = (new Query())
             ->select(['sourceId as target', 'targetId as source'])
-            ->from([Table::RELATIONS])
-            ->innerJoin(Table::ENTRIES, '[[relations.sourceId]] = [[entries.id]]')
+            ->from('{{%relations}} relations')
+            ->innerJoin('{{%entries}} entries', '[[relations.sourceId]] = [[entries.id]]')
             ->where([
                 'and',
                 [
@@ -335,9 +335,9 @@ class ReverseEntries extends Entries
                 'targetId' => $targetId,
             ];
 
-            if (!(new Query())->select('id')->from('{{%relations}}')->where($criteria)->exists()) {
+            if (!(new Query())->select('id')->from(Table::RELATIONS)->where($criteria)->exists()) {
                 Craft::$app->getDb()->createCommand()
-                    ->insert('{{%relations}}', array_merge($criteria, ['sortOrder' => 1]))
+                    ->insert(Table::RELATIONS, array_merge($criteria, ['sortOrder' => 1]))
                     ->execute();
             }
         }
@@ -371,7 +371,7 @@ class ReverseEntries extends Entries
         }
 
         Craft::$app->getDb()->createCommand()
-            ->delete('{{%relations}}', $oldRelationConditions)
+            ->delete(Table::RELATIONS, $oldRelationConditions)
             ->execute();
     }
 }
