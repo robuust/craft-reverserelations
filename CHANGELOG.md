@@ -1,6 +1,7 @@
 ## 1.1.6 - 2019-11-27
 ### Fixed
 - Fixes issue where we reversed to the primary site rather than the current site
+- Fixes issue where a cached element could not be found, but the field still relied on it
 
 ## 1.1.5 - 2019-05-24
 ### Fixed
