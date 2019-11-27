@@ -12,6 +12,7 @@ return PhpCsFixer\Config::create()
         '@PSR2' => true,
         '@Symfony' => true,
         'yoda_style' => false,
+        'no_superfluous_phpdoc_tags' => false,
     ])
     ->setCacheFile(__DIR__.'/.php_cs.cache')
     ->setFinder($finder);

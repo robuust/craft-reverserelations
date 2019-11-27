@@ -3,17 +3,17 @@
 namespace robuust\reverserelations\fields;
 
 use Craft;
-use craft\base\Field;
 use craft\base\Element;
-use craft\db\Table;
-use craft\db\Query;
-use craft\elements\Entry;
-use craft\helpers\Db;
-use craft\fields\Matrix;
-use craft\fields\Entries;
-use craft\base\FieldInterface;
 use craft\base\ElementInterface;
+use craft\base\Field;
+use craft\base\FieldInterface;
+use craft\db\Query;
+use craft\db\Table;
 use craft\elements\db\ElementQuery;
+use craft\elements\Entry;
+use craft\fields\Entries;
+use craft\fields\Matrix;
+use craft\helpers\Db;
 
 /**
  * Reverse Relations Entries Field.
