@@ -1,3 +1,7 @@
+## 1.1.6 - 2019-11-27
+### Fixed
+- Fixes issue where we reversed to the primary site rather than the current site
+
 ## 1.1.5 - 2019-05-24
 ### Fixed
 - Fixed issue where SQL errors could occur if the Craft installation's tables were prefixed
