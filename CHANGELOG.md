@@ -1,3 +1,7 @@
+## 1.1.7 - 2019-11-28
+### Fixed
+- Fixes issue where the cached element could be queried from the target site, while it should come from the source site
+
 ## 1.1.6 - 2019-11-27
 ### Fixed
 - Fixes issue where we reversed to the primary site rather than the current site

@@ -135,7 +135,7 @@ class ReverseEntries extends Entries
     {
         if (!$isNew) {
             // Get cached element
-            $entry = Craft::$app->getEntries()->getEntryById($element->id, $this->targetSiteId($element));
+            $entry = Craft::$app->getEntries()->getEntryById($element->id, $element->siteId);
 
             // Get old sources
             if ($entry) {
