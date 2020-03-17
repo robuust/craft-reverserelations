@@ -1,3 +1,7 @@
+## 1.1.8 - 2020-03-17
+### Fixed
+- Fixes issue when the cached element didn't have any old sources
+
 ## 1.1.7 - 2019-11-28
 ### Fixed
 - Fixes issue where the cached element could be queried from the target site, while it should come from the source site

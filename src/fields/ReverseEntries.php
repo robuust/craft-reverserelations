@@ -138,7 +138,7 @@ class ReverseEntries extends Entries
             $entry = Craft::$app->getEntries()->getEntryById($element->id, $element->siteId);
 
             // Get old sources
-            if ($entry) {
+            if ($entry && $entry->{$this->handle}) {
                 $this->oldSources = $entry->{$this->handle}->all();
             }
         }
