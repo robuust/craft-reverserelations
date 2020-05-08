@@ -6,13 +6,9 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
-use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\db\Table;
-use craft\elements\db\ElementQuery;
-use craft\elements\Entry;
 use craft\fields\Entries;
-use craft\fields\Matrix;
 use craft\helpers\Db;
 
 /**
@@ -26,30 +22,7 @@ use craft\helpers\Db;
  */
 class ReverseEntries extends Entries
 {
-    /**
-     * @var int Target field setting
-     */
-    public $targetFieldId;
-
-    /**
-     * @var bool Read-only setting
-     */
-    public $readOnly;
-
-    /**
-     * {@inheritdoc}
-     */
-    public $allowLimit = false;
-
-    /**
-     * {@inheritdoc}
-     */
-    protected $sortable = false;
-
-    /**
-     * @var array
-     */
-    private $oldSources = [];
+    use ReverseRelationsTrait;
 
     /**
      * {@inheritdoc}
@@ -57,36 +30,6 @@ class ReverseEntries extends Entries
     public static function displayName(): string
     {
         return Craft::t('reverserelations', 'Reverse Entry Relations');
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getSettingsHtml()
-    {
-        // Get parent settings
-        $settings = parent::getSettingsHtml();
-
-        // Get available fields
-        $fields = [];
-        /** @var Field $field */
-        foreach (Craft::$app->fields->getAllFields(false) as $field) {
-            if ($field instanceof Entries && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name;
-            }
-        }
-
-        // Add "field" select template
-        $fieldSelectTemplate = Craft::$app->view->renderTemplate(
-            'reverserelations/_settings',
-            [
-                'fields' => $fields,
-                'settings' => $this->getSettings(),
-            ]
-        );
-
-        // Return both
-        return $settings.$fieldSelectTemplate;
     }
 
     /**
@@ -147,74 +90,6 @@ class ReverseEntries extends Entries
     }
 
     /**
-     * Save relations on the other side.
-     *
-     * {@inheritdoc}
-     */
-    public function afterElementSave(ElementInterface $element, bool $isNew)
-    {
-        /** @var Element $element */
-        /** @var Field $field */
-        $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-
-        // Determine if a field can save a reverse relation
-        if (!$this->canSaveReverseRelation($field)) {
-            return;
-        }
-
-        // Get sources
-        $sources = $element->getFieldValue($this->handle)->all();
-
-        // Find out which ones to delete
-        $delete = array_diff($this->oldSources, $sources);
-
-        // Loop through sources
-        /** @var ElementInterface $source */
-        foreach ($sources as $source) {
-            $target = $source->getFieldValue($field->handle);
-
-            // Set this element on that entry
-            $this->saveRelations(
-                $field,
-                $source,
-                array_merge($target->ids(), [$element->id])
-            );
-        }
-
-        // Loop through deleted sources
-        foreach ($delete as $source) {
-            $this->deleteRelations($field, $source, [$element->id]);
-        }
-
-        Field::afterElementSave($element, $isNew);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getInputHtml($value, ElementInterface $element = null): string
-    {
-        /** @var Element|null $element */
-        if ($element !== null && $element->hasEagerLoadedElements($this->handle)) {
-            $value = $element->getEagerLoadedElements($this->handle);
-        }
-
-        // Get variables
-        /** @var ElementQuery|array $value */
-        $variables = $this->inputTemplateVariables($value, $element);
-
-        // Disable adding if we can't save a reverse relation
-        $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-        $variables['readOnly'] = $this->readOnly || !$this->canSaveReverseRelation($field);
-
-        // Return input template (local override if exists)
-        $template = 'reverserelations/'.$this->inputTemplate;
-        $template = Craft::$app->view->doesTemplateExist($template) ? $template : $this->inputTemplate;
-
-        return Craft::$app->view->renderTemplate($template, $variables);
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getEagerLoadingMap(array $sourceElements)
@@ -265,15 +140,17 @@ class ReverseEntries extends Entries
     }
 
     /**
-     * {@inheritdoc}
+     * Get available fields.
      */
-    public function settingsAttributes(): array
+    protected function getFields()
     {
-        $attributes = parent::settingsAttributes();
-        $attributes[] = 'targetFieldId';
-        $attributes[] = 'readOnly';
-
-        return $attributes;
+        $fields = [];
+        /** @var Field $field */
+        foreach (Craft::$app->fields->getAllFields(false) as $field) {
+            if ($field instanceof Entries && !($field instanceof $this)) {
+                $fields[$field->uid] = $field->name;
+            }
+        }
     }
 
     /**
@@ -296,84 +173,5 @@ class ReverseEntries extends Entries
         }
 
         return Db::idsByUids(Table::SECTIONS, $sources);
-    }
-
-    /**
-     * Determine if a field can save a reverse relation.
-     *
-     * @param FieldInterface $field
-     *
-     * @return bool
-     */
-    private function canSaveReverseRelation(FieldInterface $field): bool
-    {
-        if ($field instanceof Matrix) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * Saves some relations for a field.
-     *
-     * @param Entries $field
-     * @param Entry   $source
-     * @param array   $targetIds
-     */
-    private function saveRelations(Entries $field, Entry $source, array $targetIds)
-    {
-        if ($field->localizeRelations) {
-            $sourceSiteId = $source->siteId;
-        } else {
-            $sourceSiteId = null;
-        }
-
-        foreach ($targetIds as $sortOrder => $targetId) {
-            $criteria = [
-                'fieldId' => $field->id,
-                'sourceId' => $source->id,
-                'sourceSiteId' => $sourceSiteId,
-                'targetId' => $targetId,
-            ];
-
-            if (!(new Query())->select('id')->from(Table::RELATIONS)->where($criteria)->exists()) {
-                Craft::$app->getDb()->createCommand()
-                    ->insert(Table::RELATIONS, array_merge($criteria, ['sortOrder' => 1]))
-                    ->execute();
-            }
-        }
-    }
-
-    /**
-     * Deletes some relations for a field.
-     *
-     * @param Entries $field
-     * @param Entry   $source
-     * @param array   $targetIds
-     */
-    private function deleteRelations(Entries $field, Entry $source, array $targetIds)
-    {
-        // Delete the existing relations
-        $oldRelationConditions = [
-            'and',
-            [
-                'fieldId' => $field->id,
-                'sourceId' => $source->id,
-                'targetId' => $targetIds,
-            ],
-        ];
-
-        if ($field->localizeRelations) {
-            $oldRelationConditions[] = [
-                'or',
-                ['sourceSiteId' => null],
-                ['sourceSiteId' => $source->siteId],
-            ];
-        }
-
-        Craft::$app->getDb()->createCommand()
-            ->delete(Table::RELATIONS, $oldRelationConditions)
-            ->execute();
     }
 }
