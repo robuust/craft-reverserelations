@@ -1,3 +1,7 @@
+## 1.2.0 - 2020-05-08
+### Added
+- Added support for Categories
+
 ## 1.1.8 - 2020-03-17
 ### Fixed
 - Fixes issue when the cached element didn't have any old sources

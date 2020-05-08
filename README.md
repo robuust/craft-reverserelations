@@ -23,7 +23,7 @@ To install the plugin, follow these instructions.
 
 ## Features:
 - Able to output the relation in the CP and in the site (no other plugin has this feature)
-- Only supports entries at the moment
+- Supports entries and categories at the moment
 
 ## Todo:
 - Support more element types
