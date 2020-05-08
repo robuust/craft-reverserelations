@@ -160,7 +160,7 @@ trait ReverseRelationsTrait
      */
     protected function canSaveReverseRelation(FieldInterface $field): bool
     {
-        if ($field instanceof Matrix) {
+        if ($field instanceof Matrix || $field instanceof \verbb\supertable\fields\SuperTableField) {
             return false;
         }
 

@@ -2,6 +2,9 @@
 ### Added
 - Added support for Categories
 
+### Fixed
+- Fixed error when saving from a SuperTable field
+
 ## 1.1.8 - 2020-03-17
 ### Fixed
 - Fixes issue when the cached element didn't have any old sources
