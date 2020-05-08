@@ -4,8 +4,9 @@ namespace robuust\reverserelations;
 
 use craft\events\RegisterComponentTypesEvent;
 use craft\services\Fields;
-use yii\base\Event;
+use robuust\reverserelations\fields\ReverseCategories;
 use robuust\reverserelations\fields\ReverseEntries;
+use yii\base\Event;
 
 /**
  * Reverse Relations Plugin.
@@ -26,6 +27,7 @@ class Plugin extends \craft\base\Plugin
         parent::init();
 
         Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function (RegisterComponentTypesEvent $event) {
+            $event->types[] = ReverseCategories::class;
             $event->types[] = ReverseEntries::class;
         });
     }
