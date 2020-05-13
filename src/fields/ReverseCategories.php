@@ -141,8 +141,10 @@ class ReverseCategories extends Categories
 
     /**
      * Get available fields.
+     *
+     * @return array
      */
-    protected function getFields()
+    protected function getFields(): array
     {
         $fields = [];
         /** @var Field $field */
@@ -151,6 +153,8 @@ class ReverseCategories extends Categories
                 $fields[$field->uid] = $field->name;
             }
         }
+
+        return $fields;
     }
 
     /**
