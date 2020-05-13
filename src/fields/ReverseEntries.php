@@ -151,6 +151,7 @@ class ReverseEntries extends Entries
                 $fields[$field->uid] = $field->name;
             }
         }
+        return $fields;
     }
 
     /**
