@@ -1,3 +1,7 @@
+## 1.2.2 - 2020-09-21
+### Fixed
+- Fixed issue where only enabled elements were saved
+
 ## 1.2.1 - 2020-05-13
 ### Fixed
 - Fixed issue where no fields could be found

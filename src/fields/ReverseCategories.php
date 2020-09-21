@@ -82,7 +82,7 @@ class ReverseCategories extends Categories
 
             // Get old sources
             if ($category && $category->{$this->handle}) {
-                $this->oldSources = $category->{$this->handle}->all();
+                $this->oldSources = $category->{$this->handle}->anyStatus()->all();
             }
         }
 

@@ -82,7 +82,7 @@ class ReverseEntries extends Entries
 
             // Get old sources
             if ($entry && $entry->{$this->handle}) {
-                $this->oldSources = $entry->{$this->handle}->all();
+                $this->oldSources = $entry->{$this->handle}->anyStatus()->all();
             }
         }
 
