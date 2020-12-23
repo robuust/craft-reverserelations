@@ -1,3 +1,7 @@
+## 1.2.3 - 2020-12-23
+### Fixed
+- Fixed PHP error when source was set to "*"
+
 ## 1.2.2 - 2020-09-21
 ### Fixed
 - Fixed issue where only enabled elements were saved

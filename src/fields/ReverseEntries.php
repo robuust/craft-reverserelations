@@ -160,9 +160,9 @@ class ReverseEntries extends Entries
     /**
      * Get allowed input source ids.
      *
-     * @return array
+     * @return array|string
      */
-    private function inputSourceIds(): array
+    private function inputSourceIds()
     {
         $inputSources = $this->inputSources();
 

@@ -160,9 +160,9 @@ class ReverseCategories extends Categories
     /**
      * Get allowed input source ids.
      *
-     * @return array
+     * @return array|string
      */
-    protected function inputSourceIds(): array
+    protected function inputSourceIds()
     {
         $inputSources = $this->inputSources();
 
