@@ -1,5 +1,5 @@
 {
-    "version": "1.2.3",
+    "version": "1.2.4",
     "name": "robuust/craft-reverserelations",
     "description": "Reverse Relations for Craft 3",
     "type": "craft-plugin",
@@ -30,7 +30,7 @@
         "hasCpSection": false
     },
     "require": {
-        "php": "^7.0",
+        "php": "^7.0 || ^8.0",
         "craftcms/cms": "^3.1"
     },
     "autoload": {

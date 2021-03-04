@@ -1,3 +1,7 @@
+## 1.2.4 - 2021-03-04
+### Added
+- Added PHP8 support
+
 ## 1.2.3 - 2020-12-23
 ### Fixed
 - Fixed PHP error when source was set to "*"
