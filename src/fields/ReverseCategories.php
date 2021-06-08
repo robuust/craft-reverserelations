@@ -150,7 +150,7 @@ class ReverseCategories extends Categories
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields(false) as $field) {
             if ($field instanceof Categories && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name;
+                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
             }
         }
 

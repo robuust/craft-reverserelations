@@ -1,3 +1,7 @@
+## 1.2.5 - 2021-06-08
+### Changed
+- Show field handle in fields list
+
 ## 1.2.4 - 2021-03-04
 ### Added
 - Added PHP8 support
