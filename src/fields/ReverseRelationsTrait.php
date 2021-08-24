@@ -108,13 +108,13 @@ trait ReverseRelationsTrait
             $this->saveRelations(
                 $field,
                 $source,
-                array_merge($target->ids(), [$element->id])
+                array_merge($target->ids(), [$element->getCanonicalId()])
             );
         }
 
         // Loop through deleted sources
         foreach ($delete as $source) {
-            $this->deleteRelations($field, $source, [$element->id]);
+            $this->deleteRelations($field, $source, [$element->getCanonicalId()]);
         }
 
         Field::afterElementSave($element, $isNew);

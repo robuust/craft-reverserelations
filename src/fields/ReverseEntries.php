@@ -37,6 +37,11 @@ class ReverseEntries extends Entries
      */
     public function normalizeValue($value, ElementInterface $element = null)
     {
+        // Use the canonical element
+        if ($element) {
+            $element = $element->getCanonical();
+        }
+
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
@@ -78,7 +83,7 @@ class ReverseEntries extends Entries
     {
         if (!$isNew || $element->getIsDerivative()) {
             // Get cached element
-            $entry = Craft::$app->getEntries()->getEntryById($element->id, $element->siteId);
+            $entry = Craft::$app->getEntries()->getEntryById($element->getCanonicalId(), $element->siteId);
 
             // Get old sources
             if ($entry && $entry->{$this->handle}) {
