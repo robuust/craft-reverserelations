@@ -82,8 +82,14 @@ trait ReverseRelationsTrait
         /** @var Field $field */
         $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
-        // Determine if a field can save a reverse relation
-        if (!$this->canSaveReverseRelation($field)) {
+        // Skip if nothing changed, or the element is just propagating and we're not localizing relations,
+        // or if the field can't save reverse relations
+        if (
+            !$element->isFieldDirty($this->handle) ||
+            ($element->propagating && !$this->localizeRelations) ||
+            !$this->canSaveReverseRelation($field)
+        ) {
+            Field::afterElementSave($element, $isNew);
             return;
         }
 
