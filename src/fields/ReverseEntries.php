@@ -76,7 +76,7 @@ class ReverseEntries extends Entries
      */
     public function beforeElementSave(ElementInterface $element, bool $isNew): bool
     {
-        if (!$isNew) {
+        if (!$isNew || $element->getIsDerivative()) {
             // Get cached element
             $entry = Craft::$app->getEntries()->getEntryById($element->id, $element->siteId);
 
