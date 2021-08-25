@@ -82,13 +82,19 @@ trait ReverseRelationsTrait
         /** @var Field $field */
         $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
-        // Determine if a field can save a reverse relation
-        if (!$this->canSaveReverseRelation($field)) {
+        // Skip if nothing changed, or the element is just propagating and we're not localizing relations,
+        // or if the field can't save reverse relations
+        if (
+            !$element->isFieldDirty($this->handle) ||
+            ($element->propagating && !$this->localizeRelations) ||
+            !$this->canSaveReverseRelation($field)
+        ) {
+            Field::afterElementSave($element, $isNew);
             return;
         }
 
         // Get sources
-        $sources = $element->getFieldValue($this->handle)->anyStatus()->all();
+        $sources = (clone $element->getFieldValue($this->handle))->anyStatus()->all();
 
         // Find out which ones to delete
         $delete = array_diff($this->oldSources, $sources);
@@ -96,19 +102,19 @@ trait ReverseRelationsTrait
         // Loop through sources
         /** @var ElementInterface $source */
         foreach ($sources as $source) {
-            $target = $source->getFieldValue($field->handle)->anyStatus();
+            $target = (clone $source->getFieldValue($field->handle))->anyStatus();
 
             // Set this element on that element
             $this->saveRelations(
                 $field,
                 $source,
-                array_merge($target->ids(), [$element->id])
+                array_merge($target->ids(), [$element->getCanonicalId()])
             );
         }
 
         // Loop through deleted sources
         foreach ($delete as $source) {
-            $this->deleteRelations($field, $source, [$element->id]);
+            $this->deleteRelations($field, $source, [$element->getCanonicalId()]);
         }
 
         Field::afterElementSave($element, $isNew);
