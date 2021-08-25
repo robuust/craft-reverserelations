@@ -1,3 +1,7 @@
+## 1.3.0 - 2021-08-25
+### Changed
+- Added Craft 3.7 compatibility (thanks to @brandonkelly)
+
 ## 1.2.5 - 2021-06-08
 ### Changed
 - Show field handle in fields list
