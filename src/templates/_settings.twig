@@ -16,3 +16,12 @@
     name: 'readOnly',
     on: settings.readOnly
 })}}
+
+{{ forms.autosuggestField({
+    label: 'Template'|t('reverserelations'),
+    id: 'template',
+    name: 'template',
+    value: settings.template,
+    suggestions: craft.cp.getTemplateSuggestions(),
+    instructions: "An optional template to use for rendering the reverse relations."|t('reverserelations'),
+}) }}

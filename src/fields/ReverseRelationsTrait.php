@@ -35,6 +35,11 @@ trait ReverseRelationsTrait
     public $readOnly;
 
     /**
+     * @var string Optional template to render reverse relations in CP.
+     */
+    public $template;
+
+    /**
      * @var array
      */
     protected $oldSources = [];
@@ -132,6 +137,11 @@ trait ReverseRelationsTrait
         $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
         $variables['readOnly'] = $this->readOnly || !$this->canSaveReverseRelation($field);
 
+        // If template in field settings is set, return this as input template.
+        if ($this->template != '' && Craft::$app->view->doesTemplateExist($this->template, 'site')) {
+            return Craft::$app->view->renderTemplate($this->template, $variables, 'site');
+        }
+
         // Return input template (local override if exists)
         $template = 'reverserelations/'.$this->inputTemplate;
         $template = Craft::$app->view->doesTemplateExist($template) ? $template : $this->inputTemplate;
@@ -147,6 +157,7 @@ trait ReverseRelationsTrait
         $attributes = parent::settingsAttributes();
         $attributes[] = 'targetFieldId';
         $attributes[] = 'readOnly';
+        $attributes[] = 'template';
 
         return $attributes;
     }

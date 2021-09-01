@@ -8,4 +8,5 @@ return [
     'Read-only' => 'Read-only',
     'Disallow adding or removing of relations.' => 'Disallow adding or removing of relations.',
     'No related elements exist yet.' => 'No related elements exist yet.',
+    'An optional template to use for rendering the reverse relations.' => 'An optional template to use for rendering the reverse relations.',
 ];
