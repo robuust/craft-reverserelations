@@ -96,12 +96,15 @@ trait ReverseRelationsTrait
         // Get sources
         $sources = (clone $element->getFieldValue($this->handle))->anyStatus()->all();
 
+        // Find out which ones to add
+        $add = array_diff($sources, $this->oldSources);
+
         // Find out which ones to delete
         $delete = array_diff($this->oldSources, $sources);
 
-        // Loop through sources
-        /** @var ElementInterface $source */
-        foreach ($sources as $source) {
+        // Loop through all items that need to be added
+        /** @var ElementInterface $add */
+        foreach ($add as $source) {
             $target = (clone $source->getFieldValue($field->handle))->anyStatus();
 
             // Set this element on that element
