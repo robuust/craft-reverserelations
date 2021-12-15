@@ -1,3 +1,7 @@
+## 1.3.1 - 2021-12-14
+### Changed
+- Omit saving of relations that were not modified
+
 ## 1.3.0 - 2021-08-25
 ### Changed
 - Added Craft 3.7 compatibility (thanks to @brandonkelly)
