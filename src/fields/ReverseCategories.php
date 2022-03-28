@@ -57,7 +57,7 @@ class ReverseCategories extends Categories
                     ['relations.sourceSiteId' => null],
                     ['relations.sourceSiteId' => $element->siteId],
                 ],
-            ]);
+            ])->anyStatus()->all();
 
             $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds != '*') {
