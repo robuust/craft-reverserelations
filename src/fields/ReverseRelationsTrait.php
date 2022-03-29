@@ -10,6 +10,7 @@ use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\db\Table;
 use craft\elements\db\ElementQuery;
+use craft\elements\db\ElementQueryInterface;
 use craft\fields\BaseRelationField;
 use craft\fields\Matrix;
 
@@ -85,11 +86,12 @@ trait ReverseRelationsTrait
         // Skip if nothing changed, or the element is just propagating and we're not localizing relations,
         // or if the field can't save reverse relations
         if (
-            !$element->isFieldDirty($this->handle) ||
-            ($element->propagating && !$this->localizeRelations) ||
-            !$this->canSaveReverseRelation($field)
+            !$element->isFieldDirty($this->handle)
+            || ($element->propagating && !$this->localizeRelations)
+            || !$this->canSaveReverseRelation($field)
         ) {
             Field::afterElementSave($element, $isNew);
+
             return;
         }
 
@@ -128,6 +130,10 @@ trait ReverseRelationsTrait
      */
     public function getInputHtml($value, ElementInterface $element = null): string
     {
+        if ($value instanceof ElementQueryInterface) {
+            $value = $value->anyStatus();
+        }
+
         /** @var Element|null $element */
         if ($element !== null && $element->hasEagerLoadedElements($this->handle)) {
             $value = $element->getEagerLoadedElements($this->handle);

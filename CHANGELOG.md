@@ -1,3 +1,7 @@
+## 1.3.2 - 2022-03-29
+### Fixed
+- Bring input more in line with latest Craft changes, closes #34
+
 ## 1.3.1 - 2021-12-14
 ### Changed
 - Omit saving of relations that were not modified
