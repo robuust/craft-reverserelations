@@ -43,7 +43,7 @@ trait ReverseRelationsTrait
     /**
      * {@inheritdoc}
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
 
@@ -54,7 +54,7 @@ trait ReverseRelationsTrait
     /**
      * {@inheritdoc}
      */
-    public function getSettingsHtml()
+    public function getSettingsHtml(): ?string
     {
         // Get parent settings
         $settings = parent::getSettingsHtml();
@@ -77,7 +77,7 @@ trait ReverseRelationsTrait
      *
      * {@inheritdoc}
      */
-    public function afterElementSave(ElementInterface $element, bool $isNew)
+    public function afterElementSave(ElementInterface $element, bool $isNew): void
     {
         /** @var Element $element */
         /** @var Field $field */
@@ -189,7 +189,7 @@ trait ReverseRelationsTrait
      * @param Element           $source
      * @param array             $targetIds
      */
-    protected function saveRelations(BaseRelationField $field, Element $source, array $targetIds)
+    protected function saveRelations(BaseRelationField $field, Element $source, array $targetIds): void
     {
         if ($field->localizeRelations) {
             $sourceSiteId = $source->siteId;
@@ -220,7 +220,7 @@ trait ReverseRelationsTrait
      * @param Element           $source
      * @param array             $targetIds
      */
-    private function deleteRelations(BaseRelationField $field, Element $source, array $targetIds)
+    private function deleteRelations(BaseRelationField $field, Element $source, array $targetIds): void
     {
         // Delete the existing relations
         $oldRelationConditions = [

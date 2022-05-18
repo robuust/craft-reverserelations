@@ -35,7 +35,7 @@ class ReverseEntries extends Entries
     /**
      * {@inheritdoc}
      */
-    public function normalizeValue($value, ElementInterface $element = null)
+    public function normalizeValue($value, ElementInterface $element = null): mixed
     {
         // Use the canonical element
         if ($element) {
@@ -97,7 +97,7 @@ class ReverseEntries extends Entries
     /**
      * {@inheritdoc}
      */
-    public function getEagerLoadingMap(array $sourceElements)
+    public function getEagerLoadingMap(array $sourceElements): array|null|false
     {
         $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
@@ -167,7 +167,7 @@ class ReverseEntries extends Entries
      *
      * @return array|string
      */
-    private function inputSourceIds()
+    private function inputSourceIds(): array|string
     {
         $inputSources = $this->inputSources();
 
