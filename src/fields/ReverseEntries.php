@@ -169,7 +169,7 @@ class ReverseEntries extends Entries
      */
     private function inputSourceIds(): array|string
     {
-        $inputSources = $this->inputSources();
+        $inputSources = $this->getInputSources();
 
         if ($inputSources == '*') {
             return $inputSources;
