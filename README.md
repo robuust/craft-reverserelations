@@ -1,7 +1,8 @@
 Reverse Relations plugin for Craft
 =================
 
-Plugin that allows you to show and save reverse relations in both the CP and the site.
+Plugin that allows you to show and save reverse relations in both the CP and the site. 
+It works for relations between Entries and other Entries, and for relations between Categories and other Categories. 
 
 ## Requirements
 
