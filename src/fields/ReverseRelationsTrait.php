@@ -128,10 +128,10 @@ trait ReverseRelationsTrait
     /**
      * {@inheritdoc}
      */
-    public function getInputHtml($value, ElementInterface $element = null): string
+    public function getInputHtml($value, ?ElementInterface $element = null): string
     {
         if ($value instanceof ElementQueryInterface) {
-            $value = $value->anyStatus();
+            $value = $value->status(null);
         }
 
         /** @var Element|null $element */

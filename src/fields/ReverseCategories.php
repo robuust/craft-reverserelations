@@ -35,7 +35,7 @@ class ReverseCategories extends Categories
     /**
      * {@inheritdoc}
      */
-    public function normalizeValue($value, ElementInterface $element = null): mixed
+    public function normalizeValue($value, ?ElementInterface $element = null): mixed
     {
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
@@ -92,7 +92,7 @@ class ReverseCategories extends Categories
     /**
      * {@inheritdoc}
      */
-    public function getEagerLoadingMap(array $sourceElements): array|null|false
+    public function getEagerLoadingMap(array $sourceElements): array|false|null
     {
         $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 

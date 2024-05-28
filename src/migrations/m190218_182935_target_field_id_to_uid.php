@@ -7,7 +7,7 @@ use craft\db\Migration;
 use craft\db\Query;
 use craft\db\Table;
 use craft\helpers\Json;
-use craft\services\Fields;
+use craft\services\ProjectConfig;
 use robuust\reverserelations\fields\ReverseEntries;
 
 /**
@@ -21,10 +21,10 @@ class m190218_182935_target_field_id_to_uid extends Migration
     public function safeUp()
     {
         $fields = (new Query())
-                    ->select(['id', 'uid', 'settings'])
-                    ->from([Table::FIELDS])
-                    ->where(['type' => ReverseEntries::class])
-                    ->all();
+            ->select(['id', 'uid', 'settings'])
+            ->from([Table::FIELDS])
+            ->where(['type' => ReverseEntries::class])
+            ->all();
 
         $siteIds = [];
         $sectionIds = [];
@@ -55,22 +55,22 @@ class m190218_182935_target_field_id_to_uid extends Migration
         }
 
         $sites = (new Query())
-                    ->select(['id', 'uid'])
-                    ->from([Table::SITES])
-                    ->where(['id' => $siteIds])
-                    ->pairs();
+            ->select(['id', 'uid'])
+            ->from([Table::SITES])
+            ->where(['id' => $siteIds])
+            ->pairs();
 
         $sections = (new Query())
-                    ->select(['id', 'uid'])
-                    ->from([Table::SECTIONS])
-                    ->where(['id' => $sectionIds])
-                    ->pairs();
+            ->select(['id', 'uid'])
+            ->from([Table::SECTIONS])
+            ->where(['id' => $sectionIds])
+            ->pairs();
 
         $targets = (new Query())
-                    ->select(['id', 'uid'])
-                    ->from([Table::FIELDS])
-                    ->where(['id' => $targetIds])
-                    ->pairs();
+            ->select(['id', 'uid'])
+            ->from([Table::FIELDS])
+            ->where(['id' => $targetIds])
+            ->pairs();
 
         $projectConfig = Craft::$app->getProjectConfig();
         $projectConfig->muteEvents = true;
@@ -105,7 +105,7 @@ class m190218_182935_target_field_id_to_uid extends Migration
                 $settings['targetFieldId'] = $targets[$settings['targetFieldId']] ?? null;
             }
 
-            $projectConfig->set(Fields::CONFIG_FIELDS_KEY.'.'.$field['uid'].'.settings', $settings);
+            $projectConfig->set(ProjectConfig::PATH_FIELDS.'.'.$field['uid'].'.settings', $settings);
 
             $this->update(Table::FIELDS, ['settings' => Json::encode($settings)], ['id' => $field['id']], [], false);
         }
