@@ -1,3 +1,7 @@
+## 2.0.0 - 2022-05-18
+### Added
+- Added Craft 4 compatibility
+
 ## 1.3.2 - 2022-03-29
 ### Fixed
 - Bring input more in line with latest Craft changes, closes #34

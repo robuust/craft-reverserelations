@@ -6,7 +6,7 @@ It works for relations between Entries and other Entries, and for relations betw
 
 ## Requirements
 
-This plugin requires Craft CMS 3.1.0 or later.
+This plugin requires Craft CMS 4.0.0 or later.
 
 ## Installation
 
@@ -28,6 +28,3 @@ To install the plugin, follow these instructions.
 
 ## Todo:
 - Support more element types
-
-## Credits:
-- A big part of the Craft 3 implementation was done by @Wiejeben. Thanks!
