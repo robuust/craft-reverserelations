@@ -1,3 +1,7 @@
+## 3.0.1 - 2024-11-12
+### Changed
+- This plugin is not (yet) compatible with Craft 5.3+
+
 ## 3.0.0 - 2024-05-29
 ### Added
 - Added Craft 5 compatibility
