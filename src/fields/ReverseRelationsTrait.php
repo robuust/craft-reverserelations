@@ -7,11 +7,8 @@ use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\base\FieldInterface;
-use craft\db\Query;
-use craft\db\Table;
 use craft\elements\db\ElementQuery;
 use craft\elements\db\ElementQueryInterface;
-use craft\fields\BaseRelationField;
 use craft\fields\Matrix;
 
 /**
@@ -49,6 +46,14 @@ trait ReverseRelationsTrait
 
         $this->allowLimit = false;
         $this->sortable = false;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function dbType(): array|string|null
+    {
+        return null;
     }
 
     /**
@@ -108,18 +113,21 @@ trait ReverseRelationsTrait
         /** @var ElementInterface $add */
         foreach ($add as $source) {
             $target = (clone $source->getFieldValue($field->handle))->anyStatus();
+            $targetIds = array_merge($target->ids(), [$element->getCanonicalId()]);
 
             // Set this element on that element
-            $this->saveRelations(
-                $field,
-                $source,
-                array_merge($target->ids(), [$element->getCanonicalId()])
-            );
+            $source->setFieldValue($field->handle, $targetIds);
+            Craft::$app->getElements()->saveElement($source);
         }
 
         // Loop through deleted sources
         foreach ($delete as $source) {
-            $this->deleteRelations($field, $source, [$element->getCanonicalId()]);
+            $target = (clone $source->getFieldValue($field->handle))->anyStatus();
+            $targetIds = array_diff($target->ids(), [$element->getCanonicalId()]);
+
+            // Set this element on that element
+            $source->setFieldValue($field->handle, $targetIds);
+            Craft::$app->getElements()->saveElement($source);
         }
 
         Field::afterElementSave($element, $isNew);
@@ -180,68 +188,5 @@ trait ReverseRelationsTrait
         }
 
         return true;
-    }
-
-    /**
-     * Saves some relations for a field.
-     *
-     * @param BaseRelationField $field
-     * @param Element           $source
-     * @param array             $targetIds
-     */
-    protected function saveRelations(BaseRelationField $field, Element $source, array $targetIds): void
-    {
-        if ($field->localizeRelations) {
-            $sourceSiteId = $source->siteId;
-        } else {
-            $sourceSiteId = null;
-        }
-
-        foreach ($targetIds as $sortOrder => $targetId) {
-            $criteria = [
-                'fieldId' => $field->id,
-                'sourceId' => $source->id,
-                'sourceSiteId' => $sourceSiteId,
-                'targetId' => $targetId,
-            ];
-
-            if (!(new Query())->select('id')->from(Table::RELATIONS)->where($criteria)->exists()) {
-                Craft::$app->getDb()->createCommand()
-                    ->insert(Table::RELATIONS, array_merge($criteria, ['sortOrder' => 1]))
-                    ->execute();
-            }
-        }
-    }
-
-    /**
-     * Deletes some relations for a field.
-     *
-     * @param BaseRelationField $field
-     * @param Element           $source
-     * @param array             $targetIds
-     */
-    private function deleteRelations(BaseRelationField $field, Element $source, array $targetIds): void
-    {
-        // Delete the existing relations
-        $oldRelationConditions = [
-            'and',
-            [
-                'fieldId' => $field->id,
-                'sourceId' => $source->id,
-                'targetId' => $targetIds,
-            ],
-        ];
-
-        if ($field->localizeRelations) {
-            $oldRelationConditions[] = [
-                'or',
-                ['sourceSiteId' => null],
-                ['sourceSiteId' => $source->siteId],
-            ];
-        }
-
-        Craft::$app->getDb()->createCommand()
-            ->delete(Table::RELATIONS, $oldRelationConditions)
-            ->execute();
     }
 }
