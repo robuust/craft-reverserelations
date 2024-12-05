@@ -15,6 +15,8 @@ return (new PhpCsFixer\Config())
         'yoda_style' => false,
         'no_superfluous_phpdoc_tags' => false,
         'multiline_whitespace_before_semicolons' => false,
+        'global_namespace_import' => false,
+        'single_line_empty_body' => false,
     ])
     ->setCacheFile(__DIR__.'/.php_cs.cache')
     ->setFinder($finder);

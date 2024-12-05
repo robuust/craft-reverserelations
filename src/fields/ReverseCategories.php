@@ -6,10 +6,15 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\behaviors\EventBehavior;
 use craft\db\Query;
-use craft\db\Table;
+use craft\db\Table as DbTable;
+use craft\elements\db\ElementQuery;
+use craft\events\CancelableEvent;
+use craft\fields\BaseRelationField;
 use craft\fields\Categories;
 use craft\helpers\Db;
+use craft\helpers\StringHelper;
 
 /**
  * Reverse Relations Categories Field.
@@ -35,7 +40,7 @@ class ReverseCategories extends Categories
     /**
      * {@inheritdoc}
      */
-    public function normalizeValue($value, ElementInterface $element = null): mixed
+    public function normalizeValue($value, ?ElementInterface $element = null): mixed
     {
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
@@ -44,20 +49,34 @@ class ReverseCategories extends Categories
         if (!is_array($value) && $value !== '' && $element && $element->id) {
             $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
-            $query->join = [];
-            $query->innerJoin('{{%relations}} relations', [
-                'and',
-                '[[relations.sourceId]] = [[elements.id]]',
-                [
-                    'relations.targetId' => $element->id,
-                    'relations.fieldId' => $targetField->id,
-                ],
-                [
-                    'or',
-                    ['relations.sourceSiteId' => null],
-                    ['relations.sourceSiteId' => $element->siteId],
-                ],
-            ]);
+            $relationsAlias = sprintf('relations_%s', StringHelper::randomString(10));
+
+            $query->attachBehavior(BaseRelationField::class, new EventBehavior([
+                ElementQuery::EVENT_AFTER_PREPARE => function (
+                    CancelableEvent $event,
+                    ElementQuery $query,
+                ) use ($element, $relationsAlias, $targetField) {
+                    // Make these changes directly on the prepared queries, so `sortOrder` doesn't ever make it into
+                    foreach ([$query->query, $query->subQuery] as $q) {
+                        $q->innerJoin(
+                            [$relationsAlias => DbTable::RELATIONS],
+                            [
+                                'and',
+                                "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
+                                [
+                                    "{$relationsAlias}.targetId" => $element->id,
+                                    "{$relationsAlias}.fieldId" => $targetField->id,
+                                ],
+                                [
+                                    'or',
+                                    ["{$relationsAlias}.sourceSiteId" => null],
+                                    ["{$relationsAlias}.sourceSiteId" => $element->siteId],
+                                ],
+                            ]
+                        );
+                    }
+                },
+            ]));
 
             $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds != '*') {
@@ -92,7 +111,7 @@ class ReverseCategories extends Categories
     /**
      * {@inheritdoc}
      */
-    public function getEagerLoadingMap(array $sourceElements): array|null|false
+    public function getEagerLoadingMap(array $sourceElements): array|false|null
     {
         $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
@@ -176,6 +195,6 @@ class ReverseCategories extends Categories
             $sources[] = $uid;
         }
 
-        return Db::idsByUids(Table::CATEGORYGROUPS, $sources);
+        return Db::idsByUids(DbTable::CATEGORYGROUPS, $sources);
     }
 }

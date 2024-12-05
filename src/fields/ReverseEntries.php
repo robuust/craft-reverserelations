@@ -6,10 +6,15 @@ use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\behaviors\EventBehavior;
 use craft\db\Query;
-use craft\db\Table;
+use craft\db\Table as DbTable;
+use craft\elements\db\ElementQuery;
+use craft\events\CancelableEvent;
+use craft\fields\BaseRelationField;
 use craft\fields\Entries;
 use craft\helpers\Db;
+use craft\helpers\StringHelper;
 
 /**
  * Reverse Relations Entries Field.
@@ -35,7 +40,7 @@ class ReverseEntries extends Entries
     /**
      * {@inheritdoc}
      */
-    public function normalizeValue($value, ElementInterface $element = null): mixed
+    public function normalizeValue($value, ?ElementInterface $element = null): mixed
     {
         // Use the canonical element
         if ($element) {
@@ -48,21 +53,34 @@ class ReverseEntries extends Entries
         // Overwrite inner join to switch sourceId and targetId
         if (!is_array($value) && $value !== '' && $element && $element->id) {
             $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
+            $relationsAlias = sprintf('relations_%s', StringHelper::randomString(10));
 
-            $query->join = [];
-            $query->innerJoin('{{%relations}} relations', [
-                'and',
-                '[[relations.sourceId]] = [[elements.id]]',
-                [
-                    'relations.targetId' => $element->id,
-                    'relations.fieldId' => $targetField->id,
-                ],
-                [
-                    'or',
-                    ['relations.sourceSiteId' => null],
-                    ['relations.sourceSiteId' => $element->siteId],
-                ],
-            ]);
+            $query->attachBehavior(BaseRelationField::class, new EventBehavior([
+                ElementQuery::EVENT_AFTER_PREPARE => function (
+                    CancelableEvent $event,
+                    ElementQuery $query,
+                ) use ($element, $relationsAlias, $targetField) {
+                    // Make these changes directly on the prepared queries, so `sortOrder` doesn't ever make it into
+                    foreach ([$query->query, $query->subQuery] as $q) {
+                        $q->innerJoin(
+                            [$relationsAlias => DbTable::RELATIONS],
+                            [
+                                'and',
+                                "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
+                                [
+                                    "{$relationsAlias}.targetId" => $element->id,
+                                    "{$relationsAlias}.fieldId" => $targetField->id,
+                                ],
+                                [
+                                    'or',
+                                    ["{$relationsAlias}.sourceSiteId" => null],
+                                    ["{$relationsAlias}.sourceSiteId" => $element->siteId],
+                                ],
+                            ]
+                        );
+                    }
+                },
+            ]));
 
             $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds != '*') {
@@ -97,7 +115,7 @@ class ReverseEntries extends Entries
     /**
      * {@inheritdoc}
      */
-    public function getEagerLoadingMap(array $sourceElements): array|null|false
+    public function getEagerLoadingMap(array $sourceElements): array|false|null
     {
         $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
 
@@ -181,6 +199,6 @@ class ReverseEntries extends Entries
             $sources[] = $uid;
         }
 
-        return Db::idsByUids(Table::SECTIONS, $sources);
+        return Db::idsByUids(DbTable::SECTIONS, $sources);
     }
 }
