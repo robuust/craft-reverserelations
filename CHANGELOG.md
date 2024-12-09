@@ -1,3 +1,7 @@
+## 3.0.3 - 2024-12-09
+### Changed
+- Improved readonly implementation (thanks to @d-karstens)
+
 ## 3.0.2 - 2024-12-05
 ### Changed
 - Added Craft 5.3+ compatibility (thanks to @Marcuzz)
