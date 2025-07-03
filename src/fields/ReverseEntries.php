@@ -83,8 +83,19 @@ class ReverseEntries extends Entries
             ]));
 
             $inputSourceIds = $this->inputSourceIds();
+
             if ($inputSourceIds != '*') {
                 $query->where(['entries.sectionId' => $inputSourceIds]);
+            }
+        }
+
+        // Check if this is a GraphQL context by looking at the request
+        $request = Craft::$app->getRequest();
+        if ($request && $request->getPathInfo() === 'actions/graphql/api') {
+            // Apply additional filtering for GraphQL to ensure proper section filtering
+            $inputSourceIds = $this->inputSourceIds();
+            if ($inputSourceIds !== '*') {
+                $query->andWhere(['entries.sectionId' => $inputSourceIds]);
             }
         }
 
@@ -146,7 +157,7 @@ class ReverseEntries extends Entries
                     ['sourceSiteId' => null],
                 ],
             ])
-            ->where(['entries.sectionId' => $this->inputSourceIds()])
+            ->andWhere(['entries.sectionId' => $this->inputSourceIds()])
             ->orderBy(['sortOrder' => SORT_ASC])
             ->all();
 
@@ -187,7 +198,8 @@ class ReverseEntries extends Entries
      */
     private function inputSourceIds(): array|string
     {
-        $inputSources = $this->getInputSources();
+        // Read sources directly from settings instead of using getInputSources()
+        $inputSources = $this->settings['sources'] ?? [];
 
         // Fallback: If sources are empty, treat as '*'
         if ($inputSources == '*' || empty($inputSources)) {
@@ -200,6 +212,45 @@ class ReverseEntries extends Entries
             $sources[] = $uid;
         }
 
-        return Db::idsByUids(DbTable::SECTIONS, $sources);
+        $sectionIds = Db::idsByUids(DbTable::SECTIONS, $sources);
+
+        return $sectionIds;
+    }
+
+    /**
+     * Get GraphQL type for this field
+     *
+     * @return mixed
+     */
+    public function getGraphQLType(): mixed
+    {
+        // Get the parent GraphQL type
+        $type = parent::getGraphQLType();
+
+        // Add custom resolver to ensure proper filtering
+        if (is_array($type) && isset($type['resolve'])) {
+            $originalResolver = $type['resolve'];
+            $type['resolve'] = function ($source, $arguments, $context, $info) use ($originalResolver) {
+                $result = $originalResolver($source, $arguments, $context, $info);
+
+                // Filter by source section to ensure we only get the correct entry types
+                if (is_array($result) && !empty($result)) {
+                    $sourceSectionIds = $this->inputSourceIds();
+
+                    if ($sourceSectionIds !== '*') {
+                        $filtered = array_filter($result, function ($item) use ($sourceSectionIds) {
+                            $hasSectionId = isset($item['sectionId']);
+                            $isInSection = $hasSectionId && in_array($item['sectionId'], $sourceSectionIds);
+                            return $isInSection;
+                        });
+                        $result = array_values($filtered);
+                    }
+                }
+
+                return $result;
+            };
+        }
+
+        return $type;
     }
 }
