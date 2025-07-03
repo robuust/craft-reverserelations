@@ -69,7 +69,7 @@ class ReverseEntries extends Entries
                                 "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
                                 [
                                     "{$relationsAlias}.targetId" => $element->id,
-                                    "{$relationsAlias}.fieldId" => $targetField->id,
+                                    "{$relationsAlias}.fieldId" => $targetField ? $targetField->id : null,
                                 ],
                                 [
                                     'or',
@@ -173,7 +173,7 @@ class ReverseEntries extends Entries
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields(false) as $field) {
             if ($field instanceof Entries && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
+                $fields[$field->uid] = $field->name . ' (' . $field->handle . ')';
             }
         }
 
@@ -189,8 +189,9 @@ class ReverseEntries extends Entries
     {
         $inputSources = $this->getInputSources();
 
-        if ($inputSources == '*') {
-            return $inputSources;
+        // Fallback: If sources are empty, treat as '*'
+        if ($inputSources == '*' || empty($inputSources)) {
+            return '*';
         }
 
         $sources = [];
