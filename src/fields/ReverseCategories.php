@@ -42,6 +42,11 @@ class ReverseCategories extends Categories
      */
     public function normalizeValue($value, ?ElementInterface $element = null): mixed
     {
+        // Use the canonical element
+        if ($element) {
+            $element = $element->getCanonical();
+        }
+
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
@@ -84,6 +89,16 @@ class ReverseCategories extends Categories
             }
         }
 
+        // Check if this is a GraphQL context by looking at the request
+        $request = Craft::$app->getRequest();
+        if ($request && $request->getPathInfo() === 'actions/graphql/api') {
+            // Apply additional filtering for GraphQL to ensure proper group filtering
+            $inputSourceIds = $this->inputSourceIds();
+            if ($inputSourceIds !== '*') {
+                $query->andWhere(['categories.groupId' => $inputSourceIds]);
+            }
+        }
+
         return $query;
     }
 
@@ -95,9 +110,9 @@ class ReverseCategories extends Categories
      */
     public function beforeElementSave(ElementInterface $element, bool $isNew): bool
     {
-        if (!$isNew) {
+        if (!$isNew || $element->getIsDerivative()) {
             // Get cached element
-            $category = Craft::$app->getCategories()->getCategoryById($element->id, $element->siteId);
+            $category = Craft::$app->getCategories()->getCategoryById($element->getCanonicalId(), $element->siteId);
 
             // Get old sources
             if ($category && $category->{$this->handle}) {
@@ -169,7 +184,7 @@ class ReverseCategories extends Categories
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields(false) as $field) {
             if ($field instanceof Categories && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
+                $fields[$field->uid] = $field->name . ' (' . $field->handle . ')';
             }
         }
 
@@ -183,10 +198,15 @@ class ReverseCategories extends Categories
      */
     protected function inputSourceIds(): array|string
     {
-        $inputSources = $this->getInputSources();
+        // Read sources from settings - handle both 'sources' (array) and 'source' (string)
+        $inputSources = $this->settings['sources'] ?? [];
+        if (empty($inputSources) && isset($this->settings['source'])) {
+            $inputSources = [$this->settings['source']];
+        }
 
-        if ($inputSources == '*') {
-            return $inputSources;
+        // Fallback: If sources are empty, treat as '*'
+        if ($inputSources == '*' || empty($inputSources)) {
+            return '*';
         }
 
         $sources = [];
@@ -195,6 +215,8 @@ class ReverseCategories extends Categories
             $sources[] = $uid;
         }
 
-        return Db::idsByUids(DbTable::CATEGORYGROUPS, $sources);
+        $groupIds = Db::idsByUids(DbTable::CATEGORYGROUPS, $sources);
+
+        return $groupIds;
     }
 }
