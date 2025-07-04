@@ -216,41 +216,4 @@ class ReverseEntries extends Entries
 
         return $sectionIds;
     }
-
-    /**
-     * Get GraphQL type for this field
-     *
-     * @return mixed
-     */
-    public function getGraphQLType(): mixed
-    {
-        // Get the parent GraphQL type
-        $type = parent::getGraphQLType();
-
-        // Add custom resolver to ensure proper filtering
-        if (is_array($type) && isset($type['resolve'])) {
-            $originalResolver = $type['resolve'];
-            $type['resolve'] = function ($source, $arguments, $context, $info) use ($originalResolver) {
-                $result = $originalResolver($source, $arguments, $context, $info);
-
-                // Filter by source section to ensure we only get the correct entry types
-                if (is_array($result) && !empty($result)) {
-                    $sourceSectionIds = $this->inputSourceIds();
-
-                    if ($sourceSectionIds !== '*') {
-                        $filtered = array_filter($result, function ($item) use ($sourceSectionIds) {
-                            $hasSectionId = isset($item['sectionId']);
-                            $isInSection = $hasSectionId && in_array($item['sectionId'], $sourceSectionIds);
-                            return $isInSection;
-                        });
-                        $result = array_values($filtered);
-                    }
-                }
-
-                return $result;
-            };
-        }
-
-        return $type;
-    }
 }
