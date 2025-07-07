@@ -184,7 +184,7 @@ class ReverseEntries extends Entries
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields(false) as $field) {
             if ($field instanceof Entries && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name . ' (' . $field->handle . ')';
+                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
             }
         }
 
@@ -212,8 +212,6 @@ class ReverseEntries extends Entries
             $sources[] = $uid;
         }
 
-        $sectionIds = Db::idsByUids(DbTable::SECTIONS, $sources);
-
-        return $sectionIds;
+        return Db::idsByUids(DbTable::SECTIONS, $sources);
     }
 }
