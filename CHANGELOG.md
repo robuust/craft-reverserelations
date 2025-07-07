@@ -1,3 +1,8 @@
+## 3.0.4 - 2025-07-07
+### Fixed
+- Fixed reverse relations not being output in the graphql response (thanks to @jesuismaxime)
+- Fixed issue where the field was not filtering by allowed entry types (thanks to @jesuismaxime)
+
 ## 3.0.3 - 2024-12-09
 ### Changed
 - Improved readonly implementation (thanks to @d-karstens)
