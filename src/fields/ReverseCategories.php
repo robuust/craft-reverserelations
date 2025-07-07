@@ -47,6 +47,8 @@ class ReverseCategories extends Categories
             $element = $element->getCanonical();
         }
 
+        $inputSourceIds = $this->inputSourceIds();
+
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
@@ -70,7 +72,7 @@ class ReverseCategories extends Categories
                                 "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
                                 [
                                     "{$relationsAlias}.targetId" => $element->id,
-                                    "{$relationsAlias}.fieldId" => $targetField->id,
+                                    "{$relationsAlias}.fieldId" => $targetField?->id,
                                 ],
                                 [
                                     'or',
@@ -83,17 +85,14 @@ class ReverseCategories extends Categories
                 },
             ]));
 
-            $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds != '*') {
                 $query->where(['categories.groupId' => $inputSourceIds]);
             }
         }
 
         // Check if this is a GraphQL context by looking at the request
-        $request = Craft::$app->getRequest();
-        if ($request && $request->getPathInfo() === 'actions/graphql/api') {
+        if (Craft::$app->getRequest()?->getIsGraphql()) {
             // Apply additional filtering for GraphQL to ensure proper group filtering
-            $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds !== '*') {
                 $query->andWhere(['categories.groupId' => $inputSourceIds]);
             }

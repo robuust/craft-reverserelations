@@ -47,6 +47,8 @@ class ReverseEntries extends Entries
             $element = $element->getCanonical();
         }
 
+        $inputSourceIds = $this->inputSourceIds();
+
         /** @var Element|null $element */
         $query = parent::normalizeValue($value, $element);
 
@@ -69,7 +71,7 @@ class ReverseEntries extends Entries
                                 "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
                                 [
                                     "{$relationsAlias}.targetId" => $element->id,
-                                    "{$relationsAlias}.fieldId" => $targetField ? $targetField->id : null,
+                                    "{$relationsAlias}.fieldId" => $targetField?->id,
                                 ],
                                 [
                                     'or',
@@ -82,18 +84,14 @@ class ReverseEntries extends Entries
                 },
             ]));
 
-            $inputSourceIds = $this->inputSourceIds();
-
             if ($inputSourceIds != '*') {
                 $query->where(['entries.sectionId' => $inputSourceIds]);
             }
         }
 
         // Check if this is a GraphQL context by looking at the request
-        $request = Craft::$app->getRequest();
-        if ($request && $request->getPathInfo() === 'actions/graphql/api') {
+        if (Craft::$app->getRequest()?->getIsGraphql()) {
             // Apply additional filtering for GraphQL to ensure proper section filtering
-            $inputSourceIds = $this->inputSourceIds();
             if ($inputSourceIds !== '*') {
                 $query->andWhere(['entries.sectionId' => $inputSourceIds]);
             }
