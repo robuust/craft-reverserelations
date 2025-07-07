@@ -69,7 +69,7 @@ class ReverseEntries extends Entries
                                 "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
                                 [
                                     "{$relationsAlias}.targetId" => $element->id,
-                                    "{$relationsAlias}.fieldId" => $targetField->id,
+                                    "{$relationsAlias}.fieldId" => $targetField ? $targetField->id : null,
                                 ],
                                 [
                                     'or',
@@ -83,8 +83,19 @@ class ReverseEntries extends Entries
             ]));
 
             $inputSourceIds = $this->inputSourceIds();
+
             if ($inputSourceIds != '*') {
                 $query->where(['entries.sectionId' => $inputSourceIds]);
+            }
+        }
+
+        // Check if this is a GraphQL context by looking at the request
+        $request = Craft::$app->getRequest();
+        if ($request && $request->getPathInfo() === 'actions/graphql/api') {
+            // Apply additional filtering for GraphQL to ensure proper section filtering
+            $inputSourceIds = $this->inputSourceIds();
+            if ($inputSourceIds !== '*') {
+                $query->andWhere(['entries.sectionId' => $inputSourceIds]);
             }
         }
 
@@ -146,7 +157,7 @@ class ReverseEntries extends Entries
                     ['sourceSiteId' => null],
                 ],
             ])
-            ->where(['entries.sectionId' => $this->inputSourceIds()])
+            ->andWhere(['entries.sectionId' => $this->inputSourceIds()])
             ->orderBy(['sortOrder' => SORT_ASC])
             ->all();
 
@@ -173,7 +184,7 @@ class ReverseEntries extends Entries
         /** @var Field $field */
         foreach (Craft::$app->fields->getAllFields(false) as $field) {
             if ($field instanceof Entries && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
+                $fields[$field->uid] = $field->name . ' (' . $field->handle . ')';
             }
         }
 
@@ -187,10 +198,12 @@ class ReverseEntries extends Entries
      */
     private function inputSourceIds(): array|string
     {
-        $inputSources = $this->getInputSources();
+        // Read sources directly from settings instead of using getInputSources()
+        $inputSources = $this->settings['sources'] ?? [];
 
-        if ($inputSources == '*') {
-            return $inputSources;
+        // Fallback: If sources are empty, treat as '*'
+        if ($inputSources == '*' || empty($inputSources)) {
+            return '*';
         }
 
         $sources = [];
@@ -199,6 +212,8 @@ class ReverseEntries extends Entries
             $sources[] = $uid;
         }
 
-        return Db::idsByUids(DbTable::SECTIONS, $sources);
+        $sectionIds = Db::idsByUids(DbTable::SECTIONS, $sources);
+
+        return $sectionIds;
     }
 }
