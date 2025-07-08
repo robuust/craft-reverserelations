@@ -15,6 +15,7 @@ use craft\fields\BaseRelationField;
 use craft\fields\Categories;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\web\Request;
 
 /**
  * Reverse Relations Categories Field.
@@ -91,7 +92,9 @@ class ReverseCategories extends Categories
         }
 
         // Check if this is a GraphQL context by looking at the request
-        if (Craft::$app->getRequest()?->getIsGraphql()) {
+        /** @var Request $request */
+        $request = Craft::$app->getRequest();
+        if (!$request->getIsConsoleRequest() && $request->getIsGraphql()) {
             // Apply additional filtering for GraphQL to ensure proper group filtering
             if ($inputSourceIds !== '*') {
                 $query->andWhere(['categories.groupId' => $inputSourceIds]);

@@ -1,3 +1,7 @@
+## 3.0.5 - 2025-07-08
+### Fixed
+- Fixed error in console
+
 ## 3.0.4 - 2025-07-07
 ### Fixed
 - Fixed reverse relations not being output in the graphql response (thanks to @jesuismaxime)

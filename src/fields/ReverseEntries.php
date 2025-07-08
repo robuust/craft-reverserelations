@@ -15,6 +15,7 @@ use craft\fields\BaseRelationField;
 use craft\fields\Entries;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\web\Request;
 
 /**
  * Reverse Relations Entries Field.
@@ -90,7 +91,9 @@ class ReverseEntries extends Entries
         }
 
         // Check if this is a GraphQL context by looking at the request
-        if (Craft::$app->getRequest()?->getIsGraphql()) {
+        /** @var Request $request */
+        $request = Craft::$app->getRequest();
+        if (!$request->getIsConsoleRequest() && $request->getIsGraphql()) {
             // Apply additional filtering for GraphQL to ensure proper section filtering
             if ($inputSourceIds !== '*') {
                 $query->andWhere(['entries.sectionId' => $inputSourceIds]);
