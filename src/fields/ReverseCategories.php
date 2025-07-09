@@ -150,17 +150,17 @@ class ReverseCategories extends Categories
             ->where([
                 'and',
                 [
-                    'fieldId' => $targetField->id,
-                    'targetId' => $sourceElementIds,
+                    'relations.fieldId' => $targetField->id,
+                    'relations.targetId' => $sourceElementIds,
                 ],
                 [
                     'or',
-                    ['sourceSiteId' => $firstElement ? $firstElement->siteId : null],
-                    ['sourceSiteId' => null],
+                    ['relations.sourceSiteId' => $firstElement ? $firstElement->siteId : null],
+                    ['relations.sourceSiteId' => null],
                 ],
             ])
             ->where(['categories.groupId' => $this->inputSourceIds()])
-            ->orderBy(['sortOrder' => SORT_ASC])
+            ->orderBy(['relations.sortOrder' => SORT_ASC])
             ->all();
 
         // Figure out which target site to use

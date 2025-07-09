@@ -1,3 +1,7 @@
+## 3.0.6 - 2025-07-09
+### Fixed
+- Fixed ambiguous column error(s)
+
 ## 3.0.5 - 2025-07-08
 ### Fixed
 - Fixed error in console
