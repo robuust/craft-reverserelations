@@ -146,7 +146,6 @@ class ReverseCategories extends Categories
         $map = (new Query())
             ->select(['sourceId as target', 'targetId as source'])
             ->from('{{%relations}} relations')
-            ->innerJoin('{{%categories}} categories', '[[relations.sourceId]] = [[categories.id]]')
             ->where([
                 'and',
                 [
@@ -159,19 +158,22 @@ class ReverseCategories extends Categories
                     ['relations.sourceSiteId' => null],
                 ],
             ])
-            ->where(['categories.groupId' => $this->inputSourceIds()])
             ->orderBy(['relations.sortOrder' => SORT_ASC])
             ->all();
 
         // Figure out which target site to use
-        $targetSite = $this->targetSiteId($firstElement);
+        $criteria = ['siteId' => $this->targetSiteId($firstElement)];
+
+        // Different to ReverseEntries, '*' means no group configured
+        // or stale group since categories don't have "all groups" source
+        if (($groupIds = $this->inputSourceIds()) !== '*') {
+            $criteria['groupId'] = array_values($groupIds);
+        }
 
         return [
             'elementType' => static::elementType(),
             'map' => $map,
-            'criteria' => [
-                'siteId' => $targetSite,
-            ],
+            'criteria' => $criteria,
         ];
     }
 
