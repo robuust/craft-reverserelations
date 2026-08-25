@@ -145,7 +145,6 @@ class ReverseEntries extends Entries
         $map = (new Query())
             ->select(['sourceId as target', 'targetId as source'])
             ->from('{{%relations}} relations')
-            ->innerJoin('{{%entries}} entries', '[[relations.sourceId]] = [[entries.id]]')
             ->where([
                 'and',
                 [
@@ -158,19 +157,20 @@ class ReverseEntries extends Entries
                     ['relations.sourceSiteId' => null],
                 ],
             ])
-            ->andWhere(['entries.sectionId' => $this->inputSourceIds()])
             ->orderBy(['relations.sortOrder' => SORT_ASC])
             ->all();
 
         // Figure out which target site to use
-        $targetSite = $this->targetSiteId($firstElement);
+        $criteria = ['siteId' => $this->targetSiteId($firstElement)];
+
+        if (($sectionIds = $this->inputSourceIds()) !== '*') {
+            $criteria['sectionId'] = array_values($sectionIds);
+        }
 
         return [
             'elementType' => static::elementType(),
             'map' => $map,
-            'criteria' => [
-                'siteId' => $targetSite,
-            ],
+            'criteria' => $criteria,
         ];
     }
 
