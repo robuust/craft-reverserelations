@@ -2,217 +2,327 @@
 
 namespace robuust\reverserelations\fields;
 
-use Craft;
-use craft\base\Element;
-use craft\base\ElementInterface;
-use craft\base\Field;
-use craft\behaviors\EventBehavior;
-use craft\db\Query;
-use craft\db\Table as DbTable;
-use craft\elements\db\ElementQuery;
-use craft\events\CancelableEvent;
-use craft\fields\BaseRelationField;
-use craft\fields\Entries;
-use craft\helpers\Db;
-use craft\helpers\StringHelper;
-use craft\web\Request;
+use CraftCms\Cms\Database\Table;
+use CraftCms\Cms\Element\Contracts\ElementInterface;
+use CraftCms\Cms\Element\ElementCollection;
+use CraftCms\Cms\Element\Queries\Contracts\ElementQueryInterface;
+use CraftCms\Cms\Element\Queries\ElementQuery;
+use CraftCms\Cms\Entry\Elements\Entry;
+use CraftCms\Cms\Field\Entries;
+use CraftCms\Cms\Field\Field;
+use CraftCms\Cms\Field\FieldContext;
+use CraftCms\Cms\Support\Facades\Elements;
+use CraftCms\Cms\Support\Facades\Fields;
+use CraftCms\Cms\Support\Facades\Sections;
+use CraftCms\Cms\Ui\Contracts\Control;
+use CraftCms\Cms\Ui\Controls\Choice;
+use CraftCms\Cms\Ui\Controls\Lightswitch;
+use CraftCms\Cms\Ui\Enums\ControlMode;
+use CraftCms\Cms\Ui\Nodes\Field as UiField;
+use CraftCms\Cms\Ui\Ui;
+use CraftCms\Cms\Ui\UiContext;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Override;
 
-/**
- * Reverse Relations Entries Field.
- *
- * @author    Bob Olde Hampsink <bob@robuust.digital>
- * @copyright Copyright (c) 2019, Robuust
- * @license   MIT
- *
- * @see       https://robuust.digital
- */
+use function CraftCms\Cms\t;
+
+/** Displays incoming entry relations and edits them through the forward field. */
 class ReverseEntries extends Entries
 {
-    use ReverseRelationsTrait;
+    /** The UID of the forward Entries field. */
+    public ?string $targetFieldId = null;
 
-    /**
-     * {@inheritdoc}
-     */
+    /** Whether editors can change the related entries. */
+    public bool $readOnly = false;
+
+    /** {@inheritdoc} */
+    #[Override]
+    public bool $allowLimit = false;
+
+    /** {@inheritdoc} */
+    #[Override]
+    protected bool $sortable = false;
+
+    /** {@inheritdoc} */
+    #[Override]
     public static function displayName(): string
     {
-        return Craft::t('reverserelations', 'Reverse Entry Relations');
+        return t('Reverse Entry Relations', category: 'reverserelations');
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public static function dbType(): array|string|null
+    {
+        return null;
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function settingsAttributes(): array
+    {
+        return [...parent::settingsAttributes(), 'targetFieldId', 'readOnly'];
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function settingsUi(UiContext $context = new UiContext()): Ui
+    {
+        $options = Fields::getAllFields(false)
+            ->filter(fn ($field) => $field instanceof Entries && !$field instanceof self)
+            ->map(fn (Entries $field) => [
+                'label' => $field->name.' ('.$field->handle.')',
+                'value' => $field->uid,
+            ])
+            ->values()
+            ->all();
+
+        return parent::settingsUi($context)->add(
+            UiField::make(
+                t('Target Field', category: 'reverserelations'),
+                Choice::make('targetFieldId')->options($options)->value($this->targetFieldId),
+            )->instructions(t('Set the target field of this relation.', category: 'reverserelations')),
+            UiField::make(
+                t('Read-only', category: 'reverserelations'),
+                Lightswitch::make('readOnly')->value($this->readOnly),
+            )->instructions(t('Disallow adding or removing of relations.', category: 'reverserelations')),
+        );
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function uiControl(FieldContext $context): Control
+    {
+        $control = parent::uiControl(new FieldContext(
+            path: $context->path,
+            value: $this->controlValue($context->value),
+            element: $context->element,
+            ui: $context->ui,
+            mode: $context->mode,
+            inline: $context->inline,
+        ));
+
+        if ($this->readOnly || $this->targetField() === null) {
+            $control->mode(ControlMode::ReadOnly);
+        }
+
+        return $control;
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    protected function inputHtml(mixed $value, ?ElementInterface $element, bool $inline): string
+    {
+        return parent::inputHtml($this->controlValue($value), $element, $inline);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    protected function elementSelectHtml(array $variables): string
+    {
+        if ($this->readOnly || $this->targetField() === null) {
+            $variables['allowAdd'] = false;
+            $variables['allowRemove'] = false;
+        }
+
+        return parent::elementSelectHtml($variables);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function normalizeValue(mixed $value, ?ElementInterface $element = null): mixed
+    {
+        $ownerId = $element?->getCanonicalId();
+        if ($value !== null || !$ownerId) {
+            return parent::normalizeValue($value, $element);
+        }
+
+        $query = Entry::find()->siteId($this->targetSiteId($element));
+        $targetField = $this->targetField();
+        if ($targetField === null) {
+            return $query->id(false);
+        }
+
+        $relations = $this->incomingRelations($targetField, $element->siteId)
+            ->where('incoming.targetId', $ownerId)
+            ->select('incoming.sourceId');
+
+        // Keep owner-specific criteria out of the shared eager-loading query.
+        return $query->beforeQuery(function (ElementQuery $query) use ($relations) {
+            $query->getQuery()->whereIn('elements.id', $relations);
+        })->prepForEagerLoading($this->handle, $element);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function getEagerLoadingMap(array $sourceElements): array|false|null
+    {
+        $first = $sourceElements[0] ?? null;
+        $targetField = $this->targetField();
+        $map = [];
+
+        if ($first && $targetField) {
+            $owners = collect($sourceElements)->groupBy(fn (ElementInterface $element) => $element->getCanonicalId());
+            $relations = $this->incomingRelations($targetField, $first->siteId)
+                ->whereIn('incoming.targetId', $owners->keys()->all())
+                ->orderBy('incoming.sortOrder')
+                ->get(['incoming.targetId', 'incoming.sourceId']);
+
+            foreach ($relations as $relation) {
+                foreach ($owners[$relation->targetId] as $owner) {
+                    $map[] = ['source' => $owner->id, 'target' => (int) $relation->sourceId];
+                }
+            }
+        }
+
+        return [
+            'elementType' => Entry::class,
+            'map' => $map,
+            'criteria' => ['siteId' => $this->targetSiteId($first)],
+        ];
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function getRelationTargetIds(ElementInterface $element): array
+    {
+        // Craft persists relations centrally. Only the forward field owns relation rows.
+        return [];
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function afterElementSave(ElementInterface $element, bool $isNew): void
+    {
+        $targetField = $this->targetField();
+        if (
+            $targetField !== null
+            && !$this->readOnly
+            && $element->isFieldDirty($this->handle)
+            && (!$element->propagating || $this->localizeRelations)
+        ) {
+            $this->updateForwardRelations($element, $targetField);
+        }
+
+        Field::afterElementSave($element, $isNew);
     }
 
     /**
-     * {@inheritdoc}
+     * Include disabled entries while keeping the reverse query's site and draft scopes.
+     *
+     * @param mixed $value
+     *
+     * @return mixed
      */
-    public function normalizeValue($value, ?ElementInterface $element = null): mixed
+    private function controlValue(mixed $value): mixed
     {
-        // Use the canonical element
-        if ($element) {
-            $element = $element->getCanonical();
+        return $value instanceof ElementQueryInterface
+            ? ElementCollection::make((clone $value)->status(null)->all())
+            : $value;
+    }
+
+    /**
+     * Resolve the configured forward field.
+     *
+     * @return Entries|null
+     */
+    private function targetField(): ?Entries
+    {
+        $field = $this->targetFieldId ? Fields::getFieldByUid($this->targetFieldId) : null;
+
+        return $field instanceof Entries && !$field instanceof self ? $field : null;
+    }
+
+    /**
+     * Get configured source section IDs, or null when all sources are allowed.
+     *
+     * @return list<int>|null
+     */
+    private function sourceSectionIds(): ?array
+    {
+        if (!$this->sources || $this->sources === self::ALL_SOURCES) {
+            return null;
         }
 
-        $inputSourceIds = $this->inputSourceIds();
+        $sectionUids = array_map(fn (string $source) => Str::after($source, ':'), (array) $this->sources);
 
-        /** @var Element|null $element */
-        $query = parent::normalizeValue($value, $element);
+        return Sections::getAllSections()->whereIn('uid', $sectionUids)->pluck('id')->all();
+    }
 
-        // Overwrite inner join to switch sourceId and targetId
-        if (!is_array($value) && $value !== '' && $element && $element->id) {
-            $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-            $relationsAlias = sprintf('relations_%s', StringHelper::randomString(10));
+    /**
+     * Query incoming relation rows in the current source site.
+     *
+     * @param Entries $targetField
+     * @param int     $siteId
+     *
+     * @return Builder
+     */
+    private function incomingRelations(Entries $targetField, int $siteId): Builder
+    {
+        $query = DB::table(Table::RELATIONS, 'incoming')
+            ->where('incoming.fieldId', $targetField->id)
+            ->where(fn (Builder $query) => $query
+                ->whereNull('incoming.sourceSiteId')
+                ->orWhere('incoming.sourceSiteId', $siteId));
 
-            $query->attachBehavior(BaseRelationField::class, new EventBehavior([
-                ElementQuery::EVENT_AFTER_PREPARE => function (
-                    CancelableEvent $event,
-                    ElementQuery $query,
-                ) use ($element, $relationsAlias, $targetField) {
-                    // Make these changes directly on the prepared queries, so `sortOrder` doesn't ever make it into
-                    foreach ([$query->query, $query->subQuery] as $q) {
-                        $q->innerJoin(
-                            [$relationsAlias => DbTable::RELATIONS],
-                            [
-                                'and',
-                                "[[{$relationsAlias}.sourceId]] = [[elements.id]]",
-                                [
-                                    "{$relationsAlias}.targetId" => $element->id,
-                                    "{$relationsAlias}.fieldId" => $targetField?->id,
-                                ],
-                                [
-                                    'or',
-                                    ["{$relationsAlias}.sourceSiteId" => null],
-                                    ["{$relationsAlias}.sourceSiteId" => $element->siteId],
-                                ],
-                            ]
-                        );
-                    }
-                },
-            ]));
-
-            if ($inputSourceIds != '*') {
-                $query->where(['entries.sectionId' => $inputSourceIds]);
-            }
-        }
-
-        // Check if this is a GraphQL context by looking at the request
-        /** @var Request $request */
-        $request = Craft::$app->getRequest();
-        if (!$request->getIsConsoleRequest() && $request->getIsGraphql()) {
-            // Apply additional filtering for GraphQL to ensure proper section filtering
-            if ($inputSourceIds !== '*') {
-                $query->andWhere(['entries.sectionId' => $inputSourceIds]);
-            }
+        $sectionIds = $this->sourceSectionIds();
+        if ($sectionIds !== null) {
+            $query->join(Table::ENTRIES.' as sourceEntries', 'sourceEntries.id', '=', 'incoming.sourceId')
+                ->whereIn('sourceEntries.sectionId', $sectionIds);
         }
 
         return $query;
     }
 
     /**
-     * Get original relations so we can diff those
-     * with the new value and find out which ones need to be deleted.
+     * Apply changes to each source entry's forward field in Craft's save transaction.
      *
-     * {@inheritdoc}
+     * @param ElementInterface $element
+     * @param Entries          $targetField
      */
-    public function beforeElementSave(ElementInterface $element, bool $isNew): bool
+    private function updateForwardRelations(ElementInterface $element, Entries $targetField): void
     {
-        if (!$isNew || $element->getIsDerivative()) {
-            // Get cached element
-            $entry = Craft::$app->getEntries()->getEntryById($element->getCanonicalId(), $element->siteId);
+        $storedIds = $this->normalizeValue(null, $element)->status(null)->eagerly(false)->ignorePlaceholders()->ids();
+        $selectedIds = parent::getRelationTargetIds($element);
+        $changedIds = [...array_diff($selectedIds, $storedIds), ...array_diff($storedIds, $selectedIds)];
 
-            // Get old sources
-            if ($entry && $entry->{$this->handle}) {
-                $this->oldSources = $entry->{$this->handle}->anyStatus()->all();
-            }
+        if (!$changedIds) {
+            return;
         }
 
-        return parent::beforeElementSave($element, $isNew);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getEagerLoadingMap(array $sourceElements): array|false|null
-    {
-        $targetField = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-
-        /** @var Element|null $firstElement */
-        $firstElement = $sourceElements[0] ?? null;
-
-        // Get the source element IDs
-        $sourceElementIds = [];
-
-        foreach ($sourceElements as $sourceElement) {
-            $sourceElementIds[] = $sourceElement->id;
-        }
-
-        // Return any relation data on these elements, defined with this field
-        $map = (new Query())
-            ->select(['sourceId as target', 'targetId as source'])
-            ->from('{{%relations}} relations')
-            ->innerJoin('{{%entries}} entries', '[[relations.sourceId]] = [[entries.id]]')
-            ->where([
-                'and',
-                [
-                    'relations.fieldId' => $targetField->id,
-                    'relations.targetId' => $sourceElementIds,
-                ],
-                [
-                    'or',
-                    ['relations.sourceSiteId' => $firstElement ? $firstElement->siteId : null],
-                    ['relations.sourceSiteId' => null],
-                ],
-            ])
-            ->andWhere(['entries.sectionId' => $this->inputSourceIds()])
-            ->orderBy(['relations.sortOrder' => SORT_ASC])
+        $sources = Entry::find()
+            ->id($changedIds)
+            ->siteId($this->targetSiteId($element))
+            ->status(null)
+            ->ignorePlaceholders()
+            ->indexBy('id')
             ->all();
+        $sectionIds = $this->sourceSectionIds();
+        $ownerId = $element->getCanonicalId();
 
-        // Figure out which target site to use
-        $targetSite = $this->targetSiteId($firstElement);
+        foreach ($changedIds as $sourceId) {
+            $source = $sources[$sourceId] ?? null;
+            $field = $source?->getFieldLayout()?->getFieldByHandle($targetField->handle);
+            if (
+                !$field instanceof Entries
+                || $field->id !== $targetField->id
+                || ($sectionIds !== null && !in_array($source->sectionId, $sectionIds, true))
+            ) {
+                throw ValidationException::withMessages(['fields.'.$this->handle => t('A related entry does not have the configured target field or is outside the selected sources.', category: 'reverserelations')]);
+            }
 
-        return [
-            'elementType' => static::elementType(),
-            'map' => $map,
-            'criteria' => [
-                'siteId' => $targetSite,
-            ],
-        ];
-    }
+            $ids = $field->getRelationTargetIds($source);
+            $updatedIds = in_array($sourceId, $selectedIds)
+                ? array_unique([...$ids, $ownerId])
+                : array_diff($ids, [$ownerId]);
 
-    /**
-     * Get available fields.
-     *
-     * @return array
-     */
-    protected function getFields(): array
-    {
-        $fields = [];
-        /** @var Field $field */
-        foreach (Craft::$app->fields->getAllFields(false) as $field) {
-            if ($field instanceof Entries && !($field instanceof $this)) {
-                $fields[$field->uid] = $field->name.' ('.$field->handle.')';
+            $source->setFieldValue($field->handle, array_values($updatedIds));
+            if (!Elements::saveElement($source)) {
+                throw ValidationException::withMessages(['fields.'.$this->handle => t('Could not save reverse relations for “{title}”.', ['title' => $source->title], category: 'reverserelations')]);
             }
         }
-
-        return $fields;
-    }
-
-    /**
-     * Get allowed input source ids.
-     *
-     * @return array|string
-     */
-    private function inputSourceIds(): array|string
-    {
-        // Read sources directly from settings instead of using getInputSources()
-        $inputSources = $this->settings['sources'] ?? [];
-
-        // Fallback: If sources are empty, treat as '*'
-        if ($inputSources == '*' || empty($inputSources)) {
-            return '*';
-        }
-
-        $sources = [];
-        foreach ($inputSources as $source) {
-            list($type, $uid) = explode(':', $source);
-            $sources[] = $uid;
-        }
-
-        return Db::idsByUids(DbTable::SECTIONS, $sources);
     }
 }

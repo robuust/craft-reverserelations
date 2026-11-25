@@ -1,30 +1,21 @@
-Reverse Relations plugin for Craft
-=================
+# Reverse Relations for Craft
 
-Plugin that allows you to show and save reverse relations in both the CP and the site. 
-It works for relations between Entries and other Entries, and for relations between Categories and other Categories. 
+Reverse Entry Relations shows entries that link to the current entry through a configured Entries field. Editors can add or remove those links from the control panel. The field is also available as an entry relation in Twig and GraphQL.
 
 ## Requirements
 
-This plugin requires Craft CMS 5.0.0 or later.
+Version 4.0 requires Craft CMS 6.0.0-beta.2 or later and PHP 8.5 or later. It runs without the Yii2 adapter.
 
 ## Installation
 
-To install the plugin, follow these instructions.
+From your Craft project, run:
 
-1. Open your terminal and go to your Craft project:
+```sh
+composer require robuust/craft-reverserelations:^4.0
+```
 
-        cd /path/to/project
+Install Reverse Relations under **Settings → Plugins**. Add a **Reverse Entry Relations** field and select the **Target Field** that holds the forward links. Turn on **Read-only** to display the links without allowing editors to change them.
 
-2. Then tell Composer to load the plugin:
+## Upgrading from 3.x
 
-        composer require robuust/craft-reverserelations
-
-3. In the Control Panel, go to Settings → Plugins and click the “Install” button for Reverse Relations.
-
-## Features:
-- Able to output the relation in the CP and in the site (no other plugin has this feature)
-- Supports entries and categories at the moment
-
-## Todo:
-- Support more element types
+Existing Reverse Entry Relations fields keep their handles, target field, sources, site settings, and read-only setting. Upgrade Craft to 6 before installing 4.0. If your project also uses Reverse Category Relations, convert those fields before moving to this version.
