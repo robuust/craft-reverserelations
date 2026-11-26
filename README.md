@@ -18,7 +18,9 @@ Install Reverse Relations under **Settings → Plugins**. Add a **Reverse Entry 
 
 ## Upgrading from 3.x
 
-Existing Reverse Entry Relations fields keep their handles, target field, sources, site settings, and read-only setting. Upgrade Craft to 6 before installing 4.0. Projects using Reverse Category Relations should run the helper below while still on Craft 5 and Reverse Relations 3.0.6.
+Existing Reverse Entry Relations fields keep their handles, target field, sources, site settings, and read-only setting. Upgrade Craft to 6 before installing 4.0.
+
+Projects that keep their categories can continue using their existing Reverse Category Relations fields on Craft 6 with `craftcms/yii2-adapter` installed and legacy category support enabled. Carry the category groups and fields over when upgrading Craft. Projects that convert categories to entries can run the helper below while still on Craft 5 and Reverse Relations 3.0.6.
 
 ### Convert Reverse Category Relations on Craft 5
 

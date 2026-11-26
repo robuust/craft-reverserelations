@@ -1,12 +1,10 @@
 ## 4.0.0 - 2026-11-25
 ### Changed
 - Ported Reverse Entry Relations to Craft 6.
+- Reverse Category Relations remains available on Craft 6 with the Yii2 adapter and legacy category support enabled.
 
 ### Added
 - Added a Craft 5 upgrade helper for existing Reverse Category Relations fields.
-
-### Removed
-- Removed the Reverse Category Relations field type.
 
 ## 3.0.6 - 2025-07-09
 ### Fixed
