@@ -2,33 +2,26 @@
 
 namespace robuust\reverserelations;
 
-use craft\events\RegisterComponentTypesEvent;
-use craft\services\Fields;
+use CraftCms\Cms\Plugin\Plugin as CraftPlugin;
+use Override;
 use robuust\reverserelations\fields\ReverseCategories;
 use robuust\reverserelations\fields\ReverseEntries;
-use yii\base\Event;
 
-/**
- * Reverse Relations Plugin.
- *
- * @author    Bob Olde Hampsink <bob@robuust.digital>
- * @copyright Copyright (c) 2019, Robuust
- * @license   MIT
- *
- * @see       https://robuust.digital
- */
-class Plugin extends \craft\base\Plugin
+/** Registers the supported reverse relation fields. */
+class Plugin extends CraftPlugin
 {
-    /**
-     * Initializes the plugin.
-     */
-    public function init()
-    {
-        parent::init();
+    /** {@inheritdoc} */
+    #[Override]
+    protected array $fieldTypes = [ReverseEntries::class];
 
-        Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function (RegisterComponentTypesEvent $event) {
-            $event->types[] = ReverseCategories::class;
-            $event->types[] = ReverseEntries::class;
-        });
+    /** {@inheritdoc} */
+    #[Override]
+    public function bootHasFieldTypes(): void
+    {
+        if (class_exists(ReverseCategories::class)) {
+            $this->fieldTypes[] = ReverseCategories::class;
+        }
+
+        parent::bootHasFieldTypes();
     }
 }

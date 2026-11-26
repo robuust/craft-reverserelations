@@ -2,191 +2,318 @@
 
 namespace robuust\reverserelations\fields;
 
-use Craft;
-use craft\base\Element;
-use craft\base\ElementInterface;
-use craft\base\Field;
-use craft\base\FieldInterface;
-use craft\elements\db\ElementQuery;
-use craft\elements\db\ElementQueryInterface;
-use craft\fields\Matrix;
+use CraftCms\Cms\Database\Table;
+use CraftCms\Cms\Element\Contracts\ElementInterface;
+use CraftCms\Cms\Element\ElementCollection;
+use CraftCms\Cms\Element\Queries\Contracts\ElementQueryInterface;
+use CraftCms\Cms\Element\Queries\ElementQuery;
+use CraftCms\Cms\Field\BaseRelationField;
+use CraftCms\Cms\Field\Field;
+use CraftCms\Cms\Field\FieldContext;
+use CraftCms\Cms\Support\Facades\Elements;
+use CraftCms\Cms\Support\Facades\Fields;
+use CraftCms\Cms\Ui\Contracts\Control;
+use CraftCms\Cms\Ui\Controls\Choice;
+use CraftCms\Cms\Ui\Controls\Lightswitch;
+use CraftCms\Cms\Ui\Enums\ControlMode;
+use CraftCms\Cms\Ui\Nodes\Field as UiField;
+use CraftCms\Cms\Ui\Ui;
+use CraftCms\Cms\Ui\UiContext;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Override;
 
-/**
- * Reverse Relations Trait.
- *
- * @author    Bob Olde Hampsink <bob@robuust.digital>
- * @copyright Copyright (c) 2020, Robuust
- * @license   MIT
- *
- * @see       https://robuust.digital
- */
+use function CraftCms\Cms\t;
+
+/** Displays incoming relations and edits them through the forward field. */
 trait ReverseRelationsTrait
 {
-    /**
-     * @var int Target field setting
-     */
-    public $targetFieldId;
+    /** The UID of the forward relation field. */
+    public ?string $targetFieldId = null;
 
-    /**
-     * @var bool Read-only setting
-     */
-    public $readOnly;
+    /** Whether editors can change the related elements. */
+    public bool $readOnly = false;
 
-    /**
-     * @var array
-     */
-    protected $oldSources = [];
+    /** {@inheritdoc} */
+    #[Override]
+    public bool $allowLimit = false;
 
-    /**
-     * {@inheritdoc}
-     */
-    public function init(): void
-    {
-        parent::init();
+    /** {@inheritdoc} */
+    #[Override]
+    protected bool $sortable = false;
 
-        $this->allowLimit = false;
-        $this->sortable = false;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
+    /** {@inheritdoc} */
+    #[Override]
     public static function dbType(): array|string|null
     {
         return null;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getSettingsHtml(): ?string
+    /** {@inheritdoc} */
+    #[Override]
+    public function settingsAttributes(): array
     {
-        // Get parent settings
-        $settings = parent::getSettingsHtml();
-
-        // Add "field" select template
-        $fieldSelectTemplate = Craft::$app->view->renderTemplate(
-            'reverserelations/_settings',
-            [
-                'fields' => $this->getFields(),
-                'settings' => $this->getSettings(),
-            ]
-        );
-
-        // Return both
-        return $settings.$fieldSelectTemplate;
+        return [...parent::settingsAttributes(), 'targetFieldId', 'readOnly'];
     }
 
-    /**
-     * Save relations on the other side.
-     *
-     * {@inheritdoc}
-     */
+    /** {@inheritdoc} */
+    #[Override]
+    public function settingsUi(UiContext $context = new UiContext()): Ui
+    {
+        $options = Fields::getAllFields(false)
+            ->filter(fn ($field) => $field instanceof parent && !$field instanceof self)
+            ->map(fn (BaseRelationField $field) => [
+                'label' => $field->name.' ('.$field->handle.')',
+                'value' => $field->uid,
+            ])
+            ->values()
+            ->all();
+
+        return parent::settingsUi($context)->add(
+            UiField::make(
+                t('Target Field', category: 'reverserelations'),
+                Choice::make('targetFieldId')->options($options)->value($this->targetFieldId),
+            )->instructions(t('Set the target field of this relation.', category: 'reverserelations')),
+            UiField::make(
+                t('Read-only', category: 'reverserelations'),
+                Lightswitch::make('readOnly')->value($this->readOnly),
+            )->instructions(t('Disallow adding or removing of relations.', category: 'reverserelations')),
+        );
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function uiControl(FieldContext $context): Control
+    {
+        // The legacy HTML bridge cannot track changes from Craft's element selector.
+        $control = BaseRelationField::uiControl(new FieldContext(
+            path: $context->path,
+            value: $this->controlValue($context->value),
+            element: $context->element,
+            ui: $context->ui,
+            mode: $context->mode,
+            inline: $context->inline,
+        ));
+
+        if ($this->readOnly || $this->targetField() === null) {
+            $control->mode(ControlMode::ReadOnly);
+        }
+
+        return $control;
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    protected function inputHtml(mixed $value, ?ElementInterface $element, bool $inline): string
+    {
+        return parent::inputHtml($this->controlValue($value), $element, $inline);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    protected function elementSelectHtml(array $variables): string
+    {
+        if ($this->readOnly || $this->targetField() === null) {
+            $variables['allowAdd'] = false;
+            $variables['allowRemove'] = false;
+        }
+
+        return parent::elementSelectHtml($variables);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function normalizeValue(mixed $value, ?ElementInterface $element = null): mixed
+    {
+        $ownerId = $element?->getCanonicalId();
+        if ($value !== null || !$ownerId) {
+            return parent::normalizeValue($value, $element);
+        }
+
+        $elementType = static::elementType();
+        $query = $elementType::find()->siteId($this->targetSiteId($element));
+        $targetField = $this->targetField();
+        if ($targetField === null) {
+            return $query->id(false);
+        }
+
+        $relations = $this->incomingRelations($targetField, $element->siteId)
+            ->where('incoming.targetId', $ownerId)
+            ->select('incoming.sourceId');
+
+        // Keep owner-specific criteria out of the shared eager-loading query.
+        return $query->beforeQuery(function (ElementQuery $query) use ($relations) {
+            $query->getQuery()->whereIn('elements.id', $relations);
+        })->prepForEagerLoading($this->handle, $element);
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function getEagerLoadingMap(array $sourceElements): array|false|null
+    {
+        $first = $sourceElements[0] ?? null;
+        $targetField = $this->targetField();
+        $map = [];
+
+        if ($first && $targetField) {
+            $owners = collect($sourceElements)->groupBy(fn (ElementInterface $element) => $element->getCanonicalId());
+            $relations = $this->incomingRelations($targetField, $first->siteId)
+                ->whereIn('incoming.targetId', $owners->keys()->all())
+                ->orderBy('incoming.sortOrder')
+                ->get(['incoming.targetId', 'incoming.sourceId']);
+
+            foreach ($relations as $relation) {
+                foreach ($owners[$relation->targetId] as $owner) {
+                    $map[] = ['source' => $owner->id, 'target' => (int) $relation->sourceId];
+                }
+            }
+        }
+
+        return [
+            'elementType' => static::elementType(),
+            'map' => $map,
+            'criteria' => ['siteId' => $this->targetSiteId($first)],
+        ];
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
+    public function getRelationTargetIds(ElementInterface $element): array
+    {
+        // Craft persists relations centrally. Only the forward field owns relation rows.
+        return [];
+    }
+
+    /** {@inheritdoc} */
+    #[Override]
     public function afterElementSave(ElementInterface $element, bool $isNew): void
     {
-        /** @var Element $element */
-        /** @var Field $field */
-        $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-
-        // Skip if nothing changed, or the element is just propagating and we're not localizing relations,
-        // or if the field can't save reverse relations
+        $targetField = $this->targetField();
         if (
-            !$element->isFieldDirty($this->handle)
-            || ($element->propagating && !$this->localizeRelations)
-            || !$this->canSaveReverseRelation($field)
+            $targetField !== null
+            && !$this->readOnly
+            && $element->isFieldDirty($this->handle)
+            && (!$element->propagating || $this->localizeRelations)
         ) {
-            Field::afterElementSave($element, $isNew);
-
-            return;
-        }
-
-        // Get sources
-        $sources = (clone $element->getFieldValue($this->handle))->anyStatus()->all();
-
-        // Find out which ones to add
-        $add = array_diff($sources, $this->oldSources);
-
-        // Find out which ones to delete
-        $delete = array_diff($this->oldSources, $sources);
-
-        // Loop through all items that need to be added
-        /** @var ElementInterface $add */
-        foreach ($add as $source) {
-            $target = (clone $source->getFieldValue($field->handle))->anyStatus();
-            $targetIds = array_merge($target->ids(), [$element->getCanonicalId()]);
-
-            // Set this element on that element
-            $source->setFieldValue($field->handle, $targetIds);
-            Craft::$app->getElements()->saveElement($source);
-        }
-
-        // Loop through deleted sources
-        foreach ($delete as $source) {
-            $target = (clone $source->getFieldValue($field->handle))->anyStatus();
-            $targetIds = array_diff($target->ids(), [$element->getCanonicalId()]);
-
-            // Set this element on that element
-            $source->setFieldValue($field->handle, $targetIds);
-            Craft::$app->getElements()->saveElement($source);
+            $this->updateForwardRelations($element, $targetField);
         }
 
         Field::afterElementSave($element, $isNew);
     }
 
     /**
-     * {@inheritdoc}
+     * Include disabled elements while keeping the reverse query's site and draft scopes.
+     *
+     * @param mixed $value
+     *
+     * @return mixed
      */
-    public function getInputHtml($value, ?ElementInterface $element = null): string
+    private function controlValue(mixed $value): mixed
     {
-        if ($value instanceof ElementQueryInterface) {
-            $value = $value->status(null);
-        }
-
-        /** @var Element|null $element */
-        if ($element !== null && $element->hasEagerLoadedElements($this->handle)) {
-            $value = $element->getEagerLoadedElements($this->handle);
-        }
-
-        // Get variables
-        /** @var ElementQuery|array $value */
-        $variables = $this->inputTemplateVariables($value, $element);
-
-        // Disable adding if we can't save a reverse relation
-        $field = Craft::$app->fields->getFieldByUid($this->targetFieldId);
-        $variables['readOnly'] = $this->readOnly || !$this->canSaveReverseRelation($field);
-
-        // Return input template (local override if exists)
-        $template = 'reverserelations/'.$this->inputTemplate;
-        $template = Craft::$app->view->doesTemplateExist($template) ? $template : $this->inputTemplate;
-
-        return Craft::$app->view->renderTemplate($template, $variables);
+        return $value instanceof ElementQueryInterface
+            ? ElementCollection::make((clone $value)->status(null)->all())
+            : $value;
     }
 
     /**
-     * {@inheritdoc}
+     * Resolve the configured forward field.
+     *
+     * @return BaseRelationField|null
      */
-    public function settingsAttributes(): array
+    private function targetField(): ?BaseRelationField
     {
-        $attributes = parent::settingsAttributes();
-        $attributes[] = 'targetFieldId';
-        $attributes[] = 'readOnly';
+        $field = $this->targetFieldId ? Fields::getFieldByUid($this->targetFieldId) : null;
 
-        return $attributes;
+        return $field instanceof parent && !$field instanceof self ? $field : null;
     }
 
     /**
-     * Determine if a field can save a reverse relation.
+     * Get the source table, scope column and allowed IDs, or null when all sources are allowed.
      *
-     * @param FieldInterface $field
-     *
-     * @return bool
+     * @return array{table: string, column: string, ids: list<int>}|null
      */
-    protected function canSaveReverseRelation(FieldInterface $field): bool
+    abstract protected function sourceScope(): ?array;
+
+    /**
+     * Get the validation message for an invalid source element.
+     *
+     * @return string
+     */
+    abstract protected function invalidSourceMessage(): string;
+
+    /**
+     * Query incoming relation rows in the current source site.
+     *
+     * @param BaseRelationField $targetField
+     * @param int               $siteId
+     *
+     * @return Builder
+     */
+    private function incomingRelations(BaseRelationField $targetField, int $siteId): Builder
     {
-        if ($field instanceof Matrix || $field instanceof \verbb\supertable\fields\SuperTableField) {
-            return false;
+        $query = DB::table(Table::RELATIONS, 'incoming')
+            ->where('incoming.fieldId', $targetField->id)
+            ->where(fn (Builder $query) => $query
+                ->whereNull('incoming.sourceSiteId')
+                ->orWhere('incoming.sourceSiteId', $siteId));
+
+        $scope = $this->sourceScope();
+        if ($scope !== null) {
+            $query->join($scope['table'].' as relationSources', 'relationSources.id', '=', 'incoming.sourceId')
+                ->whereIn('relationSources.'.$scope['column'], $scope['ids']);
         }
 
-        return true;
+        return $query;
+    }
+
+    /**
+     * Apply changes to each source element's forward field in Craft's save transaction.
+     *
+     * @param ElementInterface  $element
+     * @param BaseRelationField $targetField
+     */
+    private function updateForwardRelations(ElementInterface $element, BaseRelationField $targetField): void
+    {
+        $storedIds = $this->normalizeValue(null, $element)->status(null)->eagerly(false)->ignorePlaceholders()->ids();
+        $selectedIds = parent::getRelationTargetIds($element);
+        $changedIds = [...array_diff($selectedIds, $storedIds), ...array_diff($storedIds, $selectedIds)];
+
+        if (!$changedIds) {
+            return;
+        }
+
+        $elementType = static::elementType();
+        $sources = $elementType::find()
+            ->id($changedIds)
+            ->siteId($this->targetSiteId($element))
+            ->status(null)
+            ->ignorePlaceholders()
+            ->indexBy('id')
+            ->all();
+        $scope = $this->sourceScope();
+        $ownerId = $element->getCanonicalId();
+
+        foreach ($changedIds as $sourceId) {
+            $source = $sources[$sourceId] ?? null;
+            $field = $source?->getFieldLayout()?->getFieldByHandle($targetField->handle);
+            if (
+                !$field instanceof parent
+                || $field->id !== $targetField->id
+                || ($scope !== null && !in_array($source->{$scope['column']}, $scope['ids'], true))
+            ) {
+                throw ValidationException::withMessages(['fields.'.$this->handle => $this->invalidSourceMessage()]);
+            }
+
+            $ids = $field->getRelationTargetIds($source);
+            $updatedIds = in_array($sourceId, $selectedIds)
+                ? array_unique([...$ids, $ownerId])
+                : array_diff($ids, [$ownerId]);
+
+            $source->setFieldValue($field->handle, array_values($updatedIds));
+            if (!Elements::saveElement($source)) {
+                throw ValidationException::withMessages(['fields.'.$this->handle => t('Could not save reverse relations for “{title}”.', ['title' => $source->title], category: 'reverserelations')]);
+            }
+        }
     }
 }
