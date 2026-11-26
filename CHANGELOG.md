@@ -2,8 +2,11 @@
 ### Changed
 - Ported Reverse Entry Relations to Craft 6.
 
+### Added
+- Added a Craft 5 upgrade helper for existing Reverse Category Relations fields.
+
 ### Removed
-- Reverse Category Relations requires a separate conversion to entries.
+- Removed the Reverse Category Relations field type.
 
 ## 3.0.6 - 2025-07-09
 ### Fixed
